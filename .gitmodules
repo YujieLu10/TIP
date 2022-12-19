@@ -1,0 +1,6 @@
+[submodule "GoalAgent"]
+	path = GoalAgent
+	url = git@github.com:YujieLu10/GoalAgent.git
+[submodule "stablediffusion"]
+	path = stablediffusion
+	url = git@github.com:YujieLu10/stablediffusion.git
