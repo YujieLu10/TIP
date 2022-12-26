@@ -4,3 +4,6 @@
 [submodule "stablediffusion"]
 	path = stablediffusion
 	url = git@github.com:YujieLu10/stablediffusion.git
+[submodule "submodules/OFA"]
+	path = submodules/OFA
+	url = https://github.com/OFA-Sys/OFA

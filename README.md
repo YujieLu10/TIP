@@ -18,24 +18,23 @@ pip install -r requirements.tx
 ## Script
 
 ### WikiHow
-- m-plan: multimodal procedural planning 
+- m-plan: multimodal procedural planning, llm and t2i model will collaboratively generating close-loop procedural planning
 
-- u-plan: unimodal procedural planning that seperately plan in textual and visual space
+- u-plan: unimodal procedural planning that seperately plan in textual and visual space (in mpp, it means first use llm to generate textual plan, and then use t2i model to visualize as visual plan)
 
-- t(v)gt-v(t)-plan: visual procedural planning with ground truth textual procedural plans, aka. generating visual plans directly using ground truth textual plan (textual procedural planning with ground truth visual procedural plans, aka. generating textual plans directly using ground truth visual plan)
+- t(v)gt-u-plan: visual procedural planning with ground truth textual procedural plans, aka. generating visual plans directly using ground truth textual plan (textual procedural planning with ground truth visual procedural plans, aka. generating textual plans directly using ground truth visual plan)
 
-- t(v)gt-m-plan: more like text to image generation with temporal dimension (more like image captioning with temporal dimension)
+<!-- - t(v)gt-m-plan: more like text to image generation with temporal dimension (more like image captioning with temporal dimension) -->
 
 ```
-# with 512x512 resolution
-python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/wikihow/wikicausal_demo/tgt-v-plan --from_file /local/home/yujielu/project/MPP/GoalAgent/data/wikihow/wikicausal_demo.csv
+# txt2img applied over wikihow example
+python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/wikihow/output_example --task tgt-v-plan --file_type json --data_type wikihow
 
-# with 768x768 resolution
-python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_768-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference-v.yaml --H 768 --W 768 --outdir /share/edc/home/yujielu/MPP_data/wikihow/wikicausal_demo/tgt-v-plan_768 --from_file /local/home/yujielu/project/MPP/GoalAgent/data/wikihow/wikicausal_demo.csv
-
-# seperate task
-python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/wikihow/wikicausal_demo/tgt-v-plan --from_file /local/home/yujielu/project/MPP/GoalAgent/data/wikihow/wikicausal_demo.csv
-python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_768-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference-v.yaml --H 768 --W 768 --outdir /share/edc/home/yujielu/MPP_data/wikihow/wikicausal_demo/tgt-v-plan_768 --from_file /local/home/yujielu/project/MPP/GoalAgent/data/wikihow/wikicausal_demo.csv
+# unify command
+CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/tgt-u-plan.yaml
+CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/vgt-u-plan.yaml
+CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/u-plan.yaml
+CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/m-plan.yaml
 ```
 
 ### RecipeQA: A Challenge Dataset for Multimodal Comprehension of Cooking Recipes
