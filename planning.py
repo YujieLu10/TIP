@@ -3,7 +3,7 @@ import sys
 sys.path.append("submodules")
 sys.path.append("submodules/stablediffusion")
 sys.path.append("models")
-import argparse, os
+import argparse
 import torch
 from omegaconf import OmegaConf
 from tqdm import tqdm, trange
@@ -210,15 +210,14 @@ def main(opt):
     resolution_config = "resolution_{}".format(opt.resolution)
     outpath = os.path.join(opt.outdir, "debug_output", resolution_config) if opt.debug else os.path.join(opt.outdir, "experiment_output", resolution_config)
     os.makedirs(outpath, exist_ok=True)
-    data, task_start_idx_list, summarize_example_data_list = load_prompt(opt)
     task_config = opt.task + ".yaml"
     config = OmegaConf.load(f"{os.path.join(opt.config_root, resolution_config, task_config)}")
-    baseline_planner = Baseline_Planner(opt, config, outpath, data, task_start_idx_list)
+    baseline_planner = Baseline_Planner(opt, config, outpath)
     baseline_planner.start_planning()
 
-
-    mpp_planner = MPP_Planner(opt, config, outpath, data, task_start_idx_list)
+    mpp_planner = MPP_Planner(opt, config, outpath)
     mpp_planner.start_planning()
+
 
 if __name__ == "__main__":
     import datetime
