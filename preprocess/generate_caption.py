@@ -1,6 +1,6 @@
 import sys
-sys.path.append("submodules")
-sys.path.append("submodules/OFA")
+sys.path.append("../submodules")
+sys.path.append("../submodules/OFA")
 PLAN_ROOT = "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
 
 import os
