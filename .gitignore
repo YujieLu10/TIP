@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# checkpoint dir
+submodules/OFA-tiny
+submodules/OFA-base
+submodules/ofa-large
+submodules/ofa-huge

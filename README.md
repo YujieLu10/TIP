@@ -27,14 +27,16 @@ pip install -r requirements.tx
 <!-- - t(v)gt-m-plan: more like text to image generation with temporal dimension (more like image captioning with temporal dimension) -->
 
 ```
+# submodules/stablediffusion
 # txt2img applied over wikihow example
 python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/wikihow/output_example --task tgt-v-plan --file_type json --data_type wikihow
 
+# MPP root
 # unify command
-CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/tgt-u-plan.yaml
-CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/vgt-u-plan.yaml
-CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/u-plan.yaml
-CUDA_VISIBLE_DEVICES=4 python scripts/VL_Pro_Planning.py --outdir /share/edc/home/yujielu/MPP_data/test_config --task tgt-v-plan --config configs/multimodal-procedural-planning/m-plan.yaml
+CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task tgt-u-plan
+CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task vgt-u-plan
+CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task u-plan
+CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task m-plan
 ```
 
 ### RecipeQA: A Challenge Dataset for Multimodal Comprehension of Cooking Recipes
@@ -43,8 +45,8 @@ https://aclanthology.org/D18-1166.pdf
 ### WinoGround (maybe a little weird to use this)
 
 ```
-CUDA_VISIBLE_DEVICES=6 python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/winoground/txt2img-samples --from_file /local/home/yujielu/project/MPP/GoalAgent/data/wikihow/wikicausal_demo.csv
+CUDA_VISIBLE_DEVICES=6 python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/winoground/txt2img-samples --from_file /local/home/yujielu/project/MPP/submodules/GoalAgent/data/wikihow/wikicausal_demo.csv
 
-CUDA_VISIBLE_DEVICES=7 python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/diffusiondb/txt2img-samples --from_file /local/home/yujielu/project/MPP/GoalAgent/data/wikihow/wikicausal_demo.csv
+CUDA_VISIBLE_DEVICES=7 python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-pruned.ckpt --config configs/stable-diffusion/v2-inference.yaml --H 512 --W 512 --outdir /share/edc/home/yujielu/MPP_data/diffusiondb/txt2img-samples --from_file /local/home/yujielu/project/MPP/submodules/GoalAgent/data/wikihow/wikicausal_demo.csv
 ```
 
