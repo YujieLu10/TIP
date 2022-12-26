@@ -1,8 +1,8 @@
-[submodule "GoalAgent"]
-	path = GoalAgent
+[submodule "submodules/GoalAgent"]
+	path = submodules/GoalAgent
 	url = git@github.com:YujieLu10/GoalAgent.git
-[submodule "stablediffusion"]
-	path = stablediffusion
+[submodule "submodules/stablediffusion"]
+	path = submodules/stablediffusion
 	url = git@github.com:YujieLu10/stablediffusion.git
 [submodule "submodules/OFA"]
 	path = submodules/OFA
