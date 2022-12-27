@@ -1,39 +1,16 @@
 import openai
 import numpy as np
 import torch
-from sentence_transformers import SentenceTransformer
-from sentence_transformers import util as st_utils
 import json
 from icecream import ic
 import pandas as pd
-import time
-import random
-import os
-from tensorboardX import SummaryWriter
-from datetime import datetime
-from nltk.translate.bleu_score import sentence_bleu
-
-import spacy
-import wmd
-
-import argparse
-
-from transformers.pipelines import pipeline
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-# CMLE
-from torch import nn
-from torch.nn import CrossEntropyLoss
-
-# IRM
-from torch import nn, optim, autograd
-
 import os
 # from dotenv import load_dotenv
 import openai
+from evaluators.automatic_eval import Automatic_Evaluator
 
 # load_dotenv()
-# openai.api_key = args.api_key #"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"
+# openai.api_key = opt.api_key #"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"
 
 LMTYPE_TO_LMID = {
     "gpt3": "gpt3",
@@ -61,22 +38,23 @@ class LM_Engine(object):
         return generated_samples, mean_log_probs
             
 class LLM_Reasoning(object):
-    def __init__(self, args):
+    def __init__(self, opt):
         super().__init__()
+        self.opt = opt
         self.completion = openai.Completion()
-        self.language_model_type = args.language_model_type
-        self.open_loop = args.open_loop
-        self.model_type = args.model_type
+        self.language_model_type = opt.language_model_type
+        self.open_loop = opt.open_loop
+        self.model_type = opt.model_type
         self.model = None
-        self.planning_lm_id = LMTYPE_TO_LMID[args.language_model_type] #'gpt2-large'  # see comments above for all options
+        self.planning_lm_id = LMTYPE_TO_LMID[opt.language_model_type] #'gpt2-large'  # see comments above for all options
         self.translation_lm_id = 'stsb-roberta-large'  # see comments above for all options
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.generator = LM_Engine(self.model, self.planning_lm_id, self.device)
         self.result_list = []
-        self.data_type = args.data_type
-        self.max_tokens = args.max_tokens
+        self.data_type = opt.data_type
+        self.max_tokens = opt.max_tokens
         
-        openai.api_key = args.api_key
+        openai.api_key = opt.api_key
         self.sampling_params = \
                 {
                     "max_tokens": self.max_tokens,
@@ -88,7 +66,13 @@ class LLM_Reasoning(object):
                     "frequency_penalty": 0.3,
                     "stop": '\n'
                 }
-        pass
+        if opt.do_eval_each:
+            self.total_score_cal = {}
+            method_type=opt.model_type
+            all_model_type_list = ['{}'.format(method_type)]
+            for model_type_item in all_model_type_list:
+                self.total_score_cal[model_type_item] = {"sentence-bleu": 0, "wmd": 0, "rouge-1-f": 0, "rouge-1-p": 0, "rouge-1-r": 0, "bert-score-f": 0, "bert-score-p": 0, "bert-score-r": 0, "meteor": 0, "sentence-bert-score": 0, "caption-t-bleu": 0, "LCS": 0, "caption-t-bleu": 0, "caption-vcap-lcs": 0, "gpt3-plan-accuracy": 0, "caption-gpt3-plan-accuracy": 0, "vplan-t-clip-score": 0, "tplan-v-clip-score": 0, "vplan-v-clip-score": 0, "tplan-t-clip-score": 0}
+            self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
     
     def ask_openloop(self, task_eval_predict, curr_prompt):
         if self.model_type == "task_only_base":
@@ -131,39 +115,16 @@ class LLM_Reasoning(object):
                     prompt=prompt, engine="text-davinci-002", temperature=0.7,
                     top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
                     max_tokens=30)
+        ic(response.choices[0])
         answer = response.choices[0].text.strip().strip('-').strip('_')
         ic(answer)
         return answer
-
-
-    def calculate_total_score(self, total_score_cal, task_eval_groundtruth, task_eval_predict):
-        import nltk
-        task_eval_groundtruth = task_eval_groundtruth.replace('.', ' ')
-        task_eval_predict = task_eval_predict.replace('.', ' ')
-        total_score_cal[self.model_type]["sentence-bleu"] += nltk.translate.bleu_score.sentence_bleu([task_eval_groundtruth.split()], task_eval_predict.split())
-        # total_score_cal[model_type]["wmd"] += nlp_encoder(task_eval_groundtruth).similarity(nlp_encoder(task_eval_predict))
-        # from rouge import Rouge
-        # rouge = Rouge()
-        # scores = rouge.get_scores(task_eval_predict, task_eval_groundtruth)
-        # total_score_cal[model_type]["rouge-1-f"] += scores[0]["rouge-1"]["f"]
-        # total_score_cal[model_type]["rouge-1-p"] += scores[0]["rouge-1"]["p"]
-        # total_score_cal[model_type]["rouge-1-r"] += scores[0]["rouge-1"]["r"]
-        from datasets import load_metric
-        bertscore = load_metric("bertscore")
-        try:
-            bert_results = bertscore.compute(predictions=[task_eval_predict], references=[task_eval_groundtruth], model_type="distilbert-base-uncased")
-            total_score_cal[self.model_type]["bert-score-f"] += bert_results["f1"][0]
-            # total_score_cal[model_type]["bert-score-p"] += bert_results["precision"][0]
-            # total_score_cal[model_type]["bert-score-r"] += bert_results["recall"][0]
-        except:
-            pass
-        return total_score_cal
 
     def language_planning(self, total_score_cal, data_example, epoch_i=0):
         # global example_task_embedding
         # global action_list_embedding
 
-        task = data_example["tasks"]# if not args.model_type == "concept_knowledge" else "Hang up jacket in bedroom"
+        task = data_example["tasks"]# if not opt.model_type == "concept_knowledge" else "Hang up jacket in bedroom"
 
         if self.model_type == "task_only_base":
             curr_prompt = task+'.' #+ "<|endoftext|>" 
@@ -204,4 +165,27 @@ class LLM_Reasoning(object):
         # ic(len(task_eval_groundtruth.split('.')), len(task_eval_predict.split('.')))
         # ic(model_type, task, sentence_bleu([task_eval_groundtruth.split()], task_eval_predict.split()), nlp_encoder(task_eval_groundtruth).similarity(nlp_encoder(task_eval_predict)))
         # ic(task, len(task_eval_groundtruth), len(task_eval_predict))
-        return self.calculate_total_score(total_score_cal, task_eval_groundtruth, task_eval_predict), self.result_list
+        return self.lm_automatic_evaluator.calculate_total_score(total_score_cal=total_score_cal, task_eval_groundtruth=task_eval_groundtruth, task_eval_predict=task_eval_predict), self.result_list
+
+
+    def generate_language_plan(self, opt, task_result_dir, summarize_example_data_list):
+        if opt.do_eval_each:
+            if not os.path.isdir(task_result_dir): os.makedirs(task_result_dir)
+            skip_count = 0
+            with open(os.path.join(task_result_dir, "{}_task_result.txt".format(opt.language_model_type)), 'w') as resultfile:
+                for data_example in summarize_example_data_list[1:]:
+                    
+                    self.total_score_cal, result_list = self.language_planning(self.total_score_cal, data_example)
+
+                # mean value
+                ic(len(summarize_example_data_list), self.total_score_cal[opt.model_type].keys())
+                for score_key in self.total_score_cal[opt.model_type].keys():
+                    self.total_score_cal[opt.model_type][score_key] /= (len(summarize_example_data_list)-skip_count)
+                resultfile.writelines(result_list)
+                json.dump(self.total_score_cal,resultfile)
+                ic(skip_count, self.total_score_cal[opt.model_type])
+        else:
+            # TODO: write down step_n.txt, and full_prediction.txt
+            pass
+            
+    

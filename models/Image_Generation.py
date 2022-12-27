@@ -49,10 +49,11 @@ def put_watermark(img, wm_encoder=None):
     return img
 
 class Image_Generation(object):
-    def __init__(self, opt, config) -> None:
+    def __init__(self, opt, config, outpath) -> None:
         super().__init__()
         self.opt = opt
         self.config = config
+        self.outpath = outpath
         self.model = load_model_from_config(config, f"{config.model.ckpt}")
         # model = hydra.utils.instantiate(cfg.model)
 
@@ -94,7 +95,6 @@ class Image_Generation(object):
         with torch.no_grad(), \
             precision_scope("cuda"), \
             model.ema_scope():
-                # all_samples = list()
                 for n in trange(opt.n_iter, desc="Sampling"):
                     for prompts in tqdm(data, desc="data"):
                         uc = None
@@ -121,19 +121,6 @@ class Image_Generation(object):
                             sample_path = os.path.join(self.outpath, opt.data_type, opt.task, "task_{}".format(task_count))
                             os.makedirs(sample_path, exist_ok=True)
                             if all_step_count in task_start_idx_list:
-                                if opt.save_task_grid:
-                                    # save previous task as grid
-                                    grid = torch.stack(all_samples[1:], 0)
-                                    grid = rearrange(grid, 'n b c h w -> (n b) c h w')
-                                    grid = make_grid(grid, nrow=len(all_samples)-1)
-
-                                    # to image
-                                    grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-                                    grid = Image.fromarray(grid.astype(np.uint8))
-                                    grid = put_watermark(grid, wm_encoder)
-                                    grid.save(os.path.join(sample_path, f'task-grid-{task_count}.png'))
-                                    # grid_count += 1
-                                
                                 all_samples = list()
                                 task_count += 1
                                 step_count = 0
@@ -146,10 +133,24 @@ class Image_Generation(object):
                             img.save(os.path.join(sample_path, f"step_{step_count}.png"))
                             with open(os.path.join(sample_path, f"step_{step_count}.txt"), 'w') as f:
                                 f.write(f"{x_prompt}")
+
                             step_count += 1
                             all_step_count += 1 
                             base_count += 1
                             sample_count += 1
+                            
+                            if  opt.save_task_grid and (all_step_count in task_start_idx_list or all_step_count == len(prompts)):
+                                # save previous task as grid
+                                grid = torch.stack(all_samples[1:], 0)
+                                grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+                                grid = make_grid(grid, nrow=len(all_samples)-1)
+
+                                # to image
+                                grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
+                                grid = Image.fromarray(grid.astype(np.uint8))
+                                grid = put_watermark(grid, wm_encoder)
+                                grid.save(os.path.join(sample_path, f'task-grid-{task_count}.png'))
+
 
         print(f"Your samples are ready and waiting for you here: \n{self.outpath} \n"
             f" \nEnjoy.")

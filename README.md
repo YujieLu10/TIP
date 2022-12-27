@@ -33,10 +33,10 @@ python scripts/txt2img.py --ckpt /share/edc/home/yujielu/MPP_data/v2-1_512-ema-p
 
 # MPP root
 # unify command
-CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task tgt-u-plan
-CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task vgt-u-plan
-CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task u-plan
-CUDA_VISIBLE_DEVICES=4 python VL_Pro_Planning.py --task m-plan
+CUDA_VISIBLE_DEVICES=4 python planning.py --task tgt-u-plan
+CUDA_VISIBLE_DEVICES=4 python planning.py --task vgt-u-plan
+CUDA_VISIBLE_DEVICES=4 python planning.py --task u-plan
+CUDA_VISIBLE_DEVICES=4 python planning.py --task m-plan
 ```
 
 ### RecipeQA: A Challenge Dataset for Multimodal Comprehension of Cooking Recipes

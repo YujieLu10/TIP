@@ -6,24 +6,10 @@ sys.path.append("models")
 import argparse
 import torch
 from omegaconf import OmegaConf
-from tqdm import tqdm, trange
-from einops import rearrange
-from torchvision.utils import make_grid
 from pytorch_lightning import seed_everything
-from torch import autocast
-from contextlib import nullcontext
-from imwatermark import WatermarkEncoder
 
-from ldm.util import instantiate_from_config
-from ldm.models.diffusion.ddim import DDIMSampler
-from ldm.models.diffusion.plms import PLMSSampler
-from ldm.models.diffusion.dpm_solver import DPMSolverSampler
-from stablediffusion.scripts.mpp_utils.prompt_process import load_prompt
-
-import hydra
 from omegaconf import DictConfig, OmegaConf
 from icecream import ic
-import json
 
 from Multimodal_Procedural_Planning import MPP_Planner
 from Baseline_Planning import Baseline_Planner
@@ -37,7 +23,6 @@ def parse_args():
     parser.add_argument('--language_model_type', choices=['gpt-j-6B', 't5-11b', 'gpt2-1.5B', 'gpt2', 'gpt2-xl', 'gpt3', 'gpt_neo', 't5', 'bart', 'bert', 'roberta'], default="gpt3", help='choices')
     parser.add_argument('--model_type', choices=['concept_knowledge', 'task_only_base', 'base', 'base_tune', 'standard_prompt', 'soft_prompt_tuning', 'chain_of_thought', 'chain_of_cause', 'cmle_ipm', 'cmle_epm', 'irm', 'vae_r', 'rwSAM', 'counterfactual_prompt'], default="task_only_base", help='choices')
     parser.add_argument('--variant_type', choices=['wo_symbolic', 'wo_causality', 'full', 'wo_firsttranslation'], default='full', help='choices')
-    parser.add_argument('--task_num', type=int, default=5)
     
     parser.add_argument('--n_tokens', type=int, default=20, help='n_tokens')
     parser.add_argument('--init_from_vocab', action='store_true', help='demo')
@@ -197,8 +182,10 @@ def parse_args():
         default=1,
         help="repeat each prompt in file this often",
     )
+    parser.add_argument('--do_eval_each', action='store_true', help='demo')
     parser.add_argument('--save_task_grid', action='store_true', help='demo')
     parser.add_argument('--debug', action='store_true', help='demo')
+    parser.add_argument('--task_num', type=int, default=5)
     opt = parser.parse_args()
     return opt
 
@@ -212,8 +199,8 @@ def main(opt):
     os.makedirs(outpath, exist_ok=True)
     task_config = opt.task + ".yaml"
     config = OmegaConf.load(f"{os.path.join(opt.config_root, resolution_config, task_config)}")
-    baseline_planner = Baseline_Planner(opt, config, outpath)
-    baseline_planner.start_planning()
+    # baseline_planner = Baseline_Planner(opt, config, outpath)
+    # baseline_planner.start_planning()
 
     mpp_planner = MPP_Planner(opt, config, outpath)
     mpp_planner.start_planning()

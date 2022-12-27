@@ -1,89 +1,42 @@
 import os
-import torch
-from tqdm import tqdm, trange
-from einops import rearrange
-from torchvision.utils import make_grid
-from pytorch_lightning import seed_everything
-from torch import autocast
-from contextlib import nullcontext
-from imwatermark import WatermarkEncoder
-
-from ldm.util import instantiate_from_config
-from ldm.models.diffusion.ddim import DDIMSampler
-from ldm.models.diffusion.plms import PLMSSampler
-from ldm.models.diffusion.dpm_solver import DPMSolverSampler
-from stablediffusion.scripts.mpp_utils.prompt_process import load_prompt
-
-import hydra
-from omegaconf import DictConfig, OmegaConf
-from icecream import ic
-
-import cv2
-from PIL import Image
-import numpy as np
-import json
-
-from LLM_Reasoning import LLM_Reasoning
 import openai
+from mpp_utils.data_loader import load_sample
+from LLM_Reasoning import LLM_Reasoning
 from Image_Generation import Image_Generation
+from evaluators.automatic_eval import Automatic_Evaluator
+import Base_Planning
 
-
-class MPP_Planner(object):
+MAX_STEPS = 5
+class MPP_Planner(Base_Planning):
     """Option1: Closed-loop Procedural Planning Option2: first generate textual plan candidate pool, and then use captions of text-to-image visual plan and prompt GPT3 whether it can complete the task. and then rerank textual plan according visual plan correctness"""
     def __init__(self, opt, config, outpath) -> None:
+        super().__init__()
         self.outpath = outpath
-        self.data, self.task_start_idx_list, self.summarize_example_data_list = load_prompt(opt, config)
-
-        method_type=opt.model_type
-        self.total_score = {}
-        all_model_type_list = ['{}'.format(method_type)]
-        for model_type_item in all_model_type_list:
-            self.total_score[model_type_item] = {"sentence-bleu": 0, "bert-score-f": 0, "LCS": 0, "CLIP": 0}
+        self.data, self.task_start_idx_list, self.summarize_example_data_list = load_sample(opt, config)
         self.completion = openai.Completion()
 
         self.task_prediced_steps = []
         self.curr_prompt = ""
+        self.curr_action = ""
         self.result_list = []
         self.step_sequence = []
         self.task_eval_predict = ""
-
-    def ask(self, prompt):
-        prompt = "what is the step-by-step procedure of " + prompt + " without explanation "
-        ic(prompt)
-        import time
-        time.sleep(3)
-        try:
-            response = self.completion.create(
-                prompt=prompt, engine="text-davinci-002", temperature=0.7,
-                top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
-                max_tokens=30)
-        except:
-            time.sleep(10)
-            try:
-                response = self.completion.create(
-                    prompt=prompt, engine="text-davinci-002", temperature=0.7,
-                    top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
-                    max_tokens=30)
-            except:
-                time.sleep(20)
-                response = self.completion.create(
-                    prompt=prompt, engine="text-davinci-002", temperature=0.7,
-                    top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
-                    max_tokens=30)
-        answer = response.choices[0].text.strip().strip('-').strip('_')
-        ic(answer)
-        return answer
+        
+        self.opt = opt
+        self.config = config
+        self.llm_reasoning_engine = LLM_Reasoning(self.opt)
+        self.image_generator = Image_Generation(self.opt, self.config, self.outpath)
+        self.automatic_evaluator = Automatic_Evaluator(self.opt)
     
     def closed_loop_textual_plan_generation(self, step_idx):
-        # TODO: complete implementation
-        MAX_STEPS = 20
         # Closed-loop Single Step Textual Plan Generation (LLM, GPT3)
-        best_action, probability = self.ask(self.curr_prompt)
-        plan_termination = probability < 0.5
+        best_action = self.llm_reasoning_engine.ask(self.curr_prompt)
+        plan_termination = step_idx > MAX_STEPS # GPT3 reach end token EOS
         if plan_termination: return plan_termination
 
         self.task_prediced_steps.append(best_action)
         self.curr_prompt += f'\nStep {step_idx}: {best_action}.'
+        self.curr_action = f'\nStep {step_idx}: {best_action}.'
         self.result_list.append(f'Step {step_idx}: {best_action}.')
         self.step_sequence.append(best_action)
         self.task_eval_predict += f'Step {step_idx}: {best_action}.'        
@@ -91,22 +44,19 @@ class MPP_Planner(object):
 
 
     def closed_loop_visual_plan_generation(self, step_idx):
-        # TODO: complete implementation
         # Closed-loop Single Step Visual Plan Generation (text-to-image model, stable diffusion v2)
-        opt = self.opt
-        task_start_idx_list = []
+        task_start_idx_list = [0]
         batch_size = self.opt.n_samples
-        prompt = self.next_prompt
+        prompt = self.curr_action
         assert prompt is not None
         data = [batch_size * [prompt]]
         
-        image_generator = Image_Generation(opt)
-        image_generator.generate_image(opt, data, task_start_idx_list)
+        self.image_generator.generate_image(self.opt, data, task_start_idx_list)
 
  
-    def temporal_extended_mpp(self):
-        # TODO: complete implementation
+    def temporal_extended_mpp(self, sample):
         # Temporal-extended multimodal procedural planning
+        self.curr_prompt = sample["tasks"]
         step_idx = 0
         while True:
             step_idx += 1
@@ -116,7 +66,9 @@ class MPP_Planner(object):
             
 
     def start_planning(self):
-        # TODO: complete implementation
         # load task list
-        for task in self.summarize_example_data_list[:self.opt.task_num]:
-            self.temporal_extended_mpp()
+        for sample in self.summarize_example_data_list[:self.opt.task_num]:
+            self.temporal_extended_mpp(sample)
+            
+        eval_path = self.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
+        self.automatic_evaluator.calculate_total_score(total_score_cal=self.total_score_cal, from_task_path=eval_path)

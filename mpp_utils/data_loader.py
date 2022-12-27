@@ -8,8 +8,9 @@ def chunk(it, size):
     it = iter(it)
     return iter(lambda: tuple(islice(it, size)), ())
 
-def load_prompt(opt, config):
+def load_sample(opt, config):
     batch_size = opt.n_samples
+    data = []
     task_start_idx_list = []
     summarize_example_data_list = []
     if not opt.from_file:
@@ -17,7 +18,8 @@ def load_prompt(opt, config):
         assert prompt is not None
         data = [batch_size * [prompt]]
     else:
-        if config.mpp_model.task_config.ground_truth_modality == "textual":
+        # if config.mpp_model.task_config.ground_truth_modality == "textual":
+        if opt.task in ["tgt-u-plan", "m-plan"]:
             print(f"reading prompts from {opt.from_file}")
             if opt.file_type == "json":
                 import json
@@ -51,7 +53,7 @@ def load_prompt(opt, config):
                             idx += 1
                             if len(item) > 1:
                                 data.append(item)
-        else: # text to image generation
+        elif opt.task in ["u-plan"]:
             resolution_config = "resolution_{}".format(opt.resolution)
             text_path = os.path.join(opt.outdir, "debug_output", resolution_config) if opt.debug else os.path.join(opt.outdir, "experiment_output", resolution_config) # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
             task_num = len(os.listdir(text_path))
