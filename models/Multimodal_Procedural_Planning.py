@@ -4,13 +4,13 @@ from mpp_utils.data_loader import load_sample
 from LLM_Reasoning import LLM_Reasoning
 from Image_Generation import Image_Generation
 from evaluators.automatic_eval import Automatic_Evaluator
-import Base_Planning
+from Base_Planning import Base_Planner
 
 MAX_STEPS = 5
-class MPP_Planner(Base_Planning):
+class MPP_Planner(Base_Planner):
     """Option1: Closed-loop Procedural Planning Option2: first generate textual plan candidate pool, and then use captions of text-to-image visual plan and prompt GPT3 whether it can complete the task. and then rerank textual plan according visual plan correctness"""
     def __init__(self, opt, config, outpath) -> None:
-        super().__init__()
+        super().__init__(opt)
         self.outpath = outpath
         self.data, self.task_start_idx_list, self.summarize_example_data_list = load_sample(opt, config)
         self.completion = openai.Completion()

@@ -4,7 +4,7 @@ import clip
 import torch
 import evaluate
 import spacy
-from cider import Cider
+# from cider import Cider
 import tqdm
 import glob
 
@@ -15,7 +15,7 @@ class Automatic_Evaluator(object):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.clip_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
         self.meteor = evaluate.load('meteor')
-        self.cider = Cider()
+        # self.cider = Cider()
         self.nlp_encoder = spacy.load('en_core_web_md')
         
     def lcs(self, X, Y, m, n):

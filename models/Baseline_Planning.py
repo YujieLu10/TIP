@@ -7,11 +7,11 @@ from LLM_Reasoning import LLM_Reasoning
 from preprocessors import generate_caption
 from Image_Generation import Image_Generation
 from evaluators.automatic_eval import Automatic_Evaluator
-import Base_Planning
+from Base_Planning import Base_Planner
 
-class Baseline_Planner(Base_Planning):
+class Baseline_Planner(Base_Planner):
     def __init__(self, opt, config, outpath) -> None:
-        super().__init__()
+        super().__init__(opt)
         self.outpath = outpath
         self.opt = opt
         self.config = config

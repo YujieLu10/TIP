@@ -1,4 +1,4 @@
-class Base_Planning(object):
+class Base_Planner(object):
     def __init__(self, opt):
         self.total_score_cal = {}
         method_type=opt.model_type
