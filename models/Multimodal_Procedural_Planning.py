@@ -5,6 +5,7 @@ from LLM_Reasoning import LLM_Reasoning
 from Image_Generation import Image_Generation
 from evaluators.automatic_eval import Automatic_Evaluator
 from Base_Planning import Base_Planner
+from icecream import ic
 
 MAX_STEPS = 5
 class MPP_Planner(Base_Planner):
@@ -45,13 +46,13 @@ class MPP_Planner(Base_Planner):
 
     def closed_loop_visual_plan_generation(self, step_idx):
         # Closed-loop Single Step Visual Plan Generation (text-to-image model, stable diffusion v2)
-        task_start_idx_list = [0]
+        task_start_idx_list = []
         batch_size = self.opt.n_samples
         prompt = self.curr_action
         assert prompt is not None
         data = [batch_size * [prompt]]
         
-        self.image_generator.generate_image(self.opt, data, task_start_idx_list)
+        self.image_generator.generate_image(self.opt, data, task_start_idx_list=task_start_idx_list, step_idx=step_idx)
 
  
     def temporal_extended_mpp(self, sample):
@@ -67,8 +68,10 @@ class MPP_Planner(Base_Planner):
 
     def start_planning(self):
         # load task list
-        for sample in self.summarize_example_data_list[:self.opt.task_num]:
+        ic(self.summarize_example_data_list)
+        if self.opt.task_num > 0: self.summarize_example_data_list = self.summarize_example_data_list[:self.opt.task_num]
+        for sample in self.summarize_example_data_list:
             self.temporal_extended_mpp(sample)
-            
+        
         eval_path = self.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
         self.automatic_evaluator.calculate_total_score(total_score_cal=self.total_score_cal, from_task_path=eval_path)

@@ -5,7 +5,7 @@ import torch
 import evaluate
 import spacy
 # from cider import Cider
-import tqdm
+from tqdm import tqdm
 import glob
 
 class Automatic_Evaluator(object):

@@ -60,7 +60,7 @@ class Image_Generation(object):
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.model = self.model.to(self.device)
         
-    def generate_image(self, opt, data, task_start_idx_list):
+    def generate_image(self, opt, data, task_start_idx_list=[], step_idx=-1):
         model = self.model
         opt = self.opt
         if opt.plms:
@@ -78,10 +78,10 @@ class Image_Generation(object):
         batch_size = opt.n_samples
         n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
 
-        sample_path = os.path.join(self.outpath, opt.data_type, opt.task) # os.path.join(outpath, "samples")
+        sample_path = os.path.join(self.outpath, opt.data_type, "bridge" if opt.use_bridge else "origin", opt.task+("_w_task_hint" if opt.use_task_hint else "")) # os.path.join(outpath, "samples")
         os.makedirs(sample_path, exist_ok=True)
         sample_count = 0
-        task_count = 0
+        task_count = -1
         step_count = 0
         all_step_count = 0
         base_count = len(os.listdir(sample_path))
@@ -118,21 +118,28 @@ class Image_Generation(object):
                         x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
 
                         for x_sample, x_prompt in zip(x_samples, prompts):
-                            sample_path = os.path.join(self.outpath, opt.data_type, opt.task, "task_{}".format(task_count))
-                            os.makedirs(sample_path, exist_ok=True)
-                            if all_step_count in task_start_idx_list:
-                                all_samples = list()
+                            if all_step_count in task_start_idx_list or step_idx == 0:
                                 task_count += 1
+                                all_samples = list()
                                 step_count = 0
+                                sample_path = os.path.join(self.outpath, opt.data_type, "bridge" if opt.use_bridge else "origin", opt.task+("_w_task_hint" if opt.use_task_hint else ""), "task_{}".format(task_count))
+                                os.makedirs(sample_path, exist_ok=True)
 
                             all_samples.append(x_sample)
                             x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                             img = Image.fromarray(x_sample.astype(np.uint8))
                             img = put_watermark(img, wm_encoder)
                             # img.save(os.path.join(sample_path, f"{base_count:05}.png"))
-                            img.save(os.path.join(sample_path, f"step_{step_count}.png"))
-                            with open(os.path.join(sample_path, f"step_{step_count}.txt"), 'w') as f:
-                                f.write(f"{x_prompt}")
+                            if step_idx > 0 and len(task_start_idx_list) == 0:
+                                img.save(os.path.join(sample_path, f"step_{step_idx}.png"))
+                                if not opt.task in ["u-plan", "m-plan"]:
+                                    with open(os.path.join(sample_path, f"step_{step_idx}.txt"), 'w') as f:
+                                        f.write(f"{x_prompt}")
+                            else:
+                                img.save(os.path.join(sample_path, f"step_{step_count}.png"))
+                                if not opt.task in ["u-plan", "m-plan"]:
+                                    with open(os.path.join(sample_path, f"step_{step_count}.txt"), 'w') as f:
+                                        f.write(f"{x_prompt}")
 
                             step_count += 1
                             all_step_count += 1 

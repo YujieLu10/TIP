@@ -186,6 +186,10 @@ def parse_args():
     parser.add_argument('--save_task_grid', action='store_true', help='demo')
     parser.add_argument('--debug', action='store_true', help='demo')
     parser.add_argument('--task_num', type=int, default=5)
+    
+    # mpp setup
+    parser.add_argument('--use_bridge', action='store_true', help='demo')
+    parser.add_argument('--use_task_hint', action='store_true', help='demo')
     opt = parser.parse_args()
     return opt
 
@@ -199,11 +203,13 @@ def main(opt):
     os.makedirs(outpath, exist_ok=True)
     task_config = opt.task + ".yaml"
     config = OmegaConf.load(f"{os.path.join(opt.config_root, resolution_config, task_config)}")
-    # baseline_planner = Baseline_Planner(opt, config, outpath)
-    # baseline_planner.start_planning()
-
-    mpp_planner = MPP_Planner(opt, config, outpath)
-    mpp_planner.start_planning()
+    
+    if opt.task in ["tgt-u-plan", "vgt-u-plan", "u-plan"]:
+        baseline_planner = Baseline_Planner(opt, config, outpath)
+        baseline_planner.start_planning()
+    else:
+        mpp_planner = MPP_Planner(opt, config, outpath)
+        mpp_planner.start_planning()
 
 
 if __name__ == "__main__":

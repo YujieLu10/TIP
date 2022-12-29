@@ -88,13 +88,12 @@ class LLM_Reasoning(object):
             prompt=prompt, engine="text-davinci-002", temperature=0.7,
             top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
             max_tokens=120 if self.data_type == "wikihow" else self.max_tokens)
-        answer = response.choices[0].text.strip().strip('-').strip('_')
-        # ic(answer)
-        return answer.split('\n')
+        answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
+        return [f"Step {item}" for item in answer if len(item) > 3]
 
     def ask(self, prompt):
         prompt = "what is the step-by-step procedure of " + prompt + " without explanation "
-        ic(prompt)
+        # ic(prompt)
         import time
         time.sleep(3)
         try:
@@ -115,17 +114,17 @@ class LLM_Reasoning(object):
                     prompt=prompt, engine="text-davinci-002", temperature=0.7,
                     top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
                     max_tokens=30)
-        ic(response.choices[0])
         answer = response.choices[0].text.strip().strip('-').strip('_')
-        ic(answer)
         return answer
 
-    def language_planning(self, total_score_cal, data_example, epoch_i=0):
+    def language_planning(self, total_score_cal, data_example, sample_result_dir="", write_step_result=False):
         # global example_task_embedding
         # global action_list_embedding
 
         task = data_example["tasks"]# if not opt.model_type == "concept_knowledge" else "Hang up jacket in bedroom"
-
+        if write_step_result:
+            with open(os.path.join(sample_result_dir, f"step_0.txt"), 'w') as f:
+                f.write(f"{task}")
         if self.model_type == "task_only_base":
             curr_prompt = task+'.' #+ "<|endoftext|>" 
         # else:
@@ -145,9 +144,9 @@ class LLM_Reasoning(object):
 
         self.result_list.append(f'{task}.')
         step_sequence = []
-        if self.open_loop:
+        if True: #self.open_loop:
             generated_list = self.ask_openloop(task_eval_predict, curr_prompt)
-            ic(generated_list)
+            # ic(generated_list)
             translated_list = []
             for step_idx, each_step in enumerate(generated_list):
                 # most_similar_idx, matching_score = find_most_similar(each_step, action_list_embedding)
@@ -157,35 +156,42 @@ class LLM_Reasoning(object):
                 best_action = each_step # translated_action
                 formatted_action = best_action # (best_action[0].upper() + best_action[1:]).replace('_', ' ')
                 step_sequence.append(formatted_action)
-                step_idx += 1
-                translated_list.append(f' Step {step_idx}: {formatted_action}.')
+                translated_list.append(f' Step {step_idx+1}: {formatted_action}.')
+                if write_step_result:
+                    with open(os.path.join(sample_result_dir, "step_{}.txt".format(str(step_idx+1))), 'w') as f:
+                        f.write(f"{formatted_action}")
             self.result_list.append(" ".join(translated_list.copy()))
             task_eval_predict += " ".join(translated_list.copy())
-        ic(task_eval_groundtruth, task_eval_predict)
+        # ic(task_eval_groundtruth, task_eval_predict)
         # ic(len(task_eval_groundtruth.split('.')), len(task_eval_predict.split('.')))
         # ic(model_type, task, sentence_bleu([task_eval_groundtruth.split()], task_eval_predict.split()), nlp_encoder(task_eval_groundtruth).similarity(nlp_encoder(task_eval_predict)))
         # ic(task, len(task_eval_groundtruth), len(task_eval_predict))
-        return self.lm_automatic_evaluator.calculate_total_score(total_score_cal=total_score_cal, task_eval_groundtruth=task_eval_groundtruth, task_eval_predict=task_eval_predict), self.result_list
+        if self.opt.do_eval_each:
+            return self.lm_automatic_evaluator.calculate_total_score(total_score_cal=total_score_cal, task_eval_groundtruth=task_eval_groundtruth, task_eval_predict=task_eval_predict), self.result_list
+        else:
+            return self.result_list
 
 
     def generate_language_plan(self, opt, task_result_dir, summarize_example_data_list):
         if opt.do_eval_each:
             if not os.path.isdir(task_result_dir): os.makedirs(task_result_dir)
-            skip_count = 0
             with open(os.path.join(task_result_dir, "{}_task_result.txt".format(opt.language_model_type)), 'w') as resultfile:
                 for data_example in summarize_example_data_list[1:]:
                     
                     self.total_score_cal, result_list = self.language_planning(self.total_score_cal, data_example)
 
                 # mean value
-                ic(len(summarize_example_data_list), self.total_score_cal[opt.model_type].keys())
+                # ic(len(summarize_example_data_list), self.total_score_cal[opt.model_type].keys())
                 for score_key in self.total_score_cal[opt.model_type].keys():
-                    self.total_score_cal[opt.model_type][score_key] /= (len(summarize_example_data_list)-skip_count)
+                    self.total_score_cal[opt.model_type][score_key] /= (len(summarize_example_data_list))
                 resultfile.writelines(result_list)
                 json.dump(self.total_score_cal,resultfile)
-                ic(skip_count, self.total_score_cal[opt.model_type])
+                ic(self.total_score_cal[opt.model_type])
         else:
             # TODO: write down step_n.txt, and full_prediction.txt
-            pass
+            for task_idx, data_example in enumerate(summarize_example_data_list):
+                sample_result_dir = os.path.join(task_result_dir, "task_{}".format(str(task_idx)))
+                if not os.path.isdir(sample_result_dir): os.makedirs(sample_result_dir)
+                result_list = self.language_planning(None, data_example, sample_result_dir=sample_result_dir, write_step_result=True)
             
     
