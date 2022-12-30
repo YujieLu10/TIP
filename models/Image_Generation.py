@@ -19,8 +19,14 @@ from torchvision.utils import make_grid
 from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import nullcontext
+from LLM_Reasoning import LLM_Reasoning
 
 from tqdm import tqdm, trange
+from icecream import ic
+
+def chunk(it, size):
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())
 
 def load_model_from_config(config, ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
@@ -59,8 +65,9 @@ class Image_Generation(object):
 
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.model = self.model.to(self.device)
+        self.llm_reasoning_engine = LLM_Reasoning(self.opt)
         
-    def generate_image(self, opt, data, task_start_idx_list=[], step_idx=-1):
+    def generate_with_stablediffusion(self, data, task_start_idx_list, step_idx, task_idx, is_using_bridge=False):
         model = self.model
         opt = self.opt
         if opt.plms:
@@ -78,8 +85,9 @@ class Image_Generation(object):
         batch_size = opt.n_samples
         n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
 
-        sample_path = os.path.join(self.outpath, opt.data_type, "bridge" if opt.use_bridge else "origin", opt.task+("_w_task_hint" if opt.use_task_hint else "")) # os.path.join(outpath, "samples")
+        sample_path = self.outpath # os.path.join(outpath, "samples")
         os.makedirs(sample_path, exist_ok=True)
+        
         sample_count = 0
         task_count = -1
         step_count = 0
@@ -118,46 +126,60 @@ class Image_Generation(object):
                         x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
 
                         for x_sample, x_prompt in zip(x_samples, prompts):
-                            if all_step_count in task_start_idx_list or step_idx == 0:
+                            if all_step_count in task_start_idx_list:
                                 task_count += 1
-                                all_samples = list()
+                                # all_samples = list()
                                 step_count = 0
-                                sample_path = os.path.join(self.outpath, opt.data_type, "bridge" if opt.use_bridge else "origin", opt.task+("_w_task_hint" if opt.use_task_hint else ""), "task_{}".format(task_count))
+                                sample_path = os.path.join(self.outpath, "task_{}".format(task_count))
                                 os.makedirs(sample_path, exist_ok=True)
 
-                            all_samples.append(x_sample)
+                            # all_samples.append(x_sample)
                             x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                             img = Image.fromarray(x_sample.astype(np.uint8))
                             img = put_watermark(img, wm_encoder)
                             # img.save(os.path.join(sample_path, f"{base_count:05}.png"))
-                            if step_idx > 0 and len(task_start_idx_list) == 0:
-                                img.save(os.path.join(sample_path, f"step_{step_idx}.png"))
-                                if not opt.task in ["u-plan", "m-plan"]:
-                                    with open(os.path.join(sample_path, f"step_{step_idx}.txt"), 'w') as f:
+                            if step_idx >= 0 and len(task_start_idx_list) == 0:
+                                sample_path = os.path.join(self.outpath, "task_{}".format(task_idx))
+                                if not is_using_bridge:
+                                    img.save(os.path.join(sample_path, f"step_{step_idx}.png" if step_idx > 0 else "task.png"))
+                                if is_using_bridge:
+                                    with open(os.path.join(sample_path, f"step_{step_idx}_bridge.txt" if step_idx > 0 else f"task_bridge.txt"), 'w') as f:
                                         f.write(f"{x_prompt}")
+                                    img.save(os.path.join(sample_path, f"step_{step_idx}_bridge.png" if step_idx > 0 else f"task_bridge.png"))
                             else:
-                                img.save(os.path.join(sample_path, f"step_{step_count}.png"))
-                                if not opt.task in ["u-plan", "m-plan"]:
-                                    with open(os.path.join(sample_path, f"step_{step_count}.txt"), 'w') as f:
+                                if not is_using_bridge:
+                                    img.save(os.path.join(sample_path, f"step_{step_count}.png" if step_count > 0 else "task.png"))
+                                if is_using_bridge:
+                                    with open(os.path.join(sample_path, f"step_{step_count}_bridge.txt" if step_count > 0 else f"task_bridge.txt"), 'w') as f:
                                         f.write(f"{x_prompt}")
+                                    img.save(os.path.join(sample_path, f"step_{step_count}_bridge.png" if step_count > 0 else f"task_bridge.png"))
 
                             step_count += 1
                             all_step_count += 1 
                             base_count += 1
                             sample_count += 1
                             
-                            if  opt.save_task_grid and (all_step_count in task_start_idx_list or all_step_count == len(prompts)):
-                                # save previous task as grid
-                                grid = torch.stack(all_samples[1:], 0)
-                                grid = rearrange(grid, 'n b c h w -> (n b) c h w')
-                                grid = make_grid(grid, nrow=len(all_samples)-1)
+                            # TODO: move to visualization tool                            
+                            # if  opt.save_task_grid and (all_step_count in task_start_idx_list or all_step_count == len(prompts)):
+                            #     # save previous task as grid
+                            #     grid = torch.stack(all_samples[1:], 0)
+                            #     grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+                            #     grid = make_grid(grid, nrow=len(all_samples)-1)
 
-                                # to image
-                                grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-                                grid = Image.fromarray(grid.astype(np.uint8))
-                                grid = put_watermark(grid, wm_encoder)
-                                grid.save(os.path.join(sample_path, f'task-grid-{task_count}.png'))
+                            #     # to image
+                            #     grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
+                            #     grid = Image.fromarray(grid.astype(np.uint8))
+                            #     grid = put_watermark(grid, wm_encoder)
+                            #     grid.save(os.path.join(sample_path, f'task-grid-{task_count}.png'))
 
 
         print(f"Your samples are ready and waiting for you here: \n{self.outpath} \n"
             f" \nEnjoy.")
+
+        
+    def generate_image(self, data, task_start_idx_list=[], step_idx=-1, task_idx=-1):
+        if not self.opt.only_use_bridge:
+            self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx)
+        # TODO: update data for bridge
+        data = [tuple([self.llm_reasoning_engine.ask_prompt(xdata)]) for xdata in data]
+        self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True)

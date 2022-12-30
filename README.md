@@ -34,8 +34,9 @@ https://aclanthology.org/D18-1166.pdf
 
 
 ## Zero-shot Planning
+<!-- - c-plan: multimodal procedural planning, llm and t2i model will seperately generating close-loop procedural planning -->
 
-- m-plan: multimodal procedural planning, llm and t2i model will collaboratively generating close-loop procedural planning
+- m-plan: multimodal procedural planning, llm and t2i model will collaboratively generating procedural planning (task->textual plan->t2i with bridge for visual plan->revise textual plan for better xx?)
 
 - u-plan: unimodal procedural planning that seperately plan in textual and visual space (in mpp, it means first use llm to generate textual plan, and then use t2i model to visualize as visual plan)
 

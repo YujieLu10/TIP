@@ -13,6 +13,7 @@ from icecream import ic
 
 from Multimodal_Procedural_Planning import MPP_Planner
 from Baseline_Planning import Baseline_Planner
+from evaluators.automatic_eval import Automatic_Evaluator
 
 torch.set_grad_enabled(False)
 
@@ -30,7 +31,7 @@ def parse_args():
     parser.add_argument('--triplet_similarity_threshold', type=float, default=0.4)
     parser.add_argument('--limit_num', type=int, default=50)
     
-    parser.add_argument('--max_tokens', type=int, default=30)
+    parser.add_argument('--max_tokens', type=int, default=256)
 
     # stable diffusion argument
     parser.add_argument(
@@ -182,13 +183,17 @@ def parse_args():
         default=1,
         help="repeat each prompt in file this often",
     )
+    
+    parser.add_argument('--resume', action='store_true', help='demo')
+    parser.add_argument('--eval', action='store_true', help='demo')
     parser.add_argument('--do_eval_each', action='store_true', help='demo')
     parser.add_argument('--save_task_grid', action='store_true', help='demo')
     parser.add_argument('--debug', action='store_true', help='demo')
-    parser.add_argument('--task_num', type=int, default=5)
+    parser.add_argument('--task_num', type=int, default=50)
     
     # mpp setup
-    parser.add_argument('--use_bridge', action='store_true', help='demo')
+    # parser.add_argument('--use_bridge', action='store_true', help='demo')
+    parser.add_argument('--only_use_bridge', action='store_true', help='demo')
     parser.add_argument('--use_task_hint', action='store_true', help='demo')
     opt = parser.parse_args()
     return opt
@@ -199,17 +204,22 @@ def main(opt):
 
     # common setup
     resolution_config = "resolution_{}".format(opt.resolution)
-    outpath = os.path.join(opt.outdir, "debug_output", resolution_config) if opt.debug else os.path.join(opt.outdir, "experiment_output", resolution_config)
+    # "bridge" if opt.use_bridge else "origin"
+    outpath = os.path.join(opt.outdir, "debug_output" if opt.debug else "experiment_output", resolution_config, opt.data_type, opt.task+("_w_task_hint" if opt.use_task_hint else ""))
     os.makedirs(outpath, exist_ok=True)
     task_config = opt.task + ".yaml"
     config = OmegaConf.load(f"{os.path.join(opt.config_root, resolution_config, task_config)}")
     
-    if opt.task in ["tgt-u-plan", "vgt-u-plan", "u-plan"]:
-        baseline_planner = Baseline_Planner(opt, config, outpath)
-        baseline_planner.start_planning()
+    if opt.eval:
+        evaluator = Automatic_Evaluator(opt)
+        evaluator.eval_all(outpath)
     else:
-        mpp_planner = MPP_Planner(opt, config, outpath)
-        mpp_planner.start_planning()
+        if opt.task in ["tgt-u-plan", "vgt-u-plan", "u-plan"]:
+            baseline_planner = Baseline_Planner(opt, config, outpath)
+            baseline_planner.start_planning()
+        else: # c-plan m-plan
+            mpp_planner = MPP_Planner(opt, config, outpath)
+            mpp_planner.start_planning()
 
 
 if __name__ == "__main__":

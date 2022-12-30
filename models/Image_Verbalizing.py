@@ -65,8 +65,8 @@ class Image_Verbalizing(object):
                 if not os.path.exists(sample_path): continue
                 # step_num = len(os.listdir(sample_path))
                 step_num = len(glob.glob1(sample_path,"step_*.png"))
-                img_path = os.path.join(sample_path, f"step_{step_idx}.png")
-                for step_idx in range(step_num):            
+                for step_idx in range(1, step_num+1):   
+                    img_path = os.path.join(sample_path, f"step_{step_idx}.png")         
                     caption = self.get_caption(img_path)
                     with open(os.path.join(sample_path, f"step_{step_idx}_caption.txt"), 'w') as f:
                         f.write(f"{caption}")

@@ -7,6 +7,8 @@ import spacy
 # from cider import Cider
 from tqdm import tqdm
 import glob
+from icecream import ic
+import json
 
 class Automatic_Evaluator(object):
     def __init__(self, opt) -> None:
@@ -105,7 +107,7 @@ class Automatic_Evaluator(object):
     def calculate_total_score(self, total_score_cal, task_eval_groundtruth=None, task_eval_predict=None, visual_task_eval_groundtruth=None, visual_task_eval_predict=None, caption_task_eval_groundtruth=None, caption_task_eval_predict=None, from_task_path=""):
         if len(from_task_path):
             task_num = len(os.listdir(from_task_path))
-            gt_data_path = os.path.join("/share/edc/home/yujielu/MPP_data/dataset/{}".format(self.opt.data_type))
+            gt_data_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input/{}".format(self.opt.data_type))
             for task_idx in tqdm(range(task_num)):
                 sample_path = os.path.join(from_task_path, f"task_{task_idx}")
                 # TODO: incorporate with Pan's crawled data and RecipeQA
@@ -115,13 +117,49 @@ class Automatic_Evaluator(object):
                 # TODO: load image array
                 visual_task_eval_predict = ""
                 visual_task_eval_groundtruth = ""
-
-                for step_idx in range(step_num):
-                    task_eval_predict = self.get_content(sample_path, step_idx, "")
-                    task_eval_groundtruth = self.get_content(gt_sample_path, step_idx, "")
-                    caption_task_eval_predict = self.get_content(sample_path, step_idx, "_caption")
-                    caption_task_eval_groundtruth = self.get_content(gt_sample_path, step_idx, "_caption")
-
-                
+                task_eval_predict = ""
+                task_eval_groundtruth = ""
+                caption_task_eval_predict = ""
+                caption_task_eval_groundtruth = ""
+                # skip task evaluate
+                for step_idx in range(1, step_num+1):
+                    task_eval_predict += self.get_content(sample_path, step_idx, "")
+                    task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "")
+                    caption_task_eval_predict += self.get_content(sample_path, step_idx, "_caption")
+                    caption_task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "_caption")               
         else:
             return self.calculate_sample_score(total_score_cal, task_eval_groundtruth, task_eval_predict, visual_task_eval_groundtruth, visual_task_eval_predict, caption_task_eval_groundtruth, caption_task_eval_predict)
+        
+        
+        def eval_all(self, outpath):
+            predict_data_path = outpath
+            gt_data_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input/{}".format(self.opt.data_type))
+            task_num = self.opt.task_num if self.opt.task_num > 0 else len(os.listdir(predict_data_path))
+            for task_idx in tqdm(range(task_num)):
+                predict_sample_path = os.path.join(predict_data_path, f"task_{task_idx}")
+                # TODO: incorporate with Pan's crawled data and RecipeQA
+                gt_sample_path = os.path.join(gt_data_path, f"task_{task_idx}")
+                if not os.path.exists(predict_sample_path): continue
+                step_num = len(glob.glob1(predict_sample_path,"step_*.txt"))
+                # TODO: load image array
+                visual_task_eval_predict = ""
+                visual_task_eval_groundtruth = ""
+                task_eval_predict = ""
+                task_eval_groundtruth = ""
+                caption_task_eval_predict = ""
+                caption_task_eval_groundtruth = ""
+                # skip task evaluate
+                for step_idx in range(1, step_num+1):
+                    task_eval_predict += self.get_content(predict_sample_path, step_idx, "")
+                    task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "")
+                    caption_task_eval_predict += self.get_content(predict_sample_path, step_idx, "_caption")
+                    caption_task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "_caption")
+                task_total_score_cal = self.calculate_sample_score(total_score_cal, task_eval_groundtruth, task_eval_predict, visual_task_eval_groundtruth, visual_task_eval_predict, caption_task_eval_groundtruth, caption_task_eval_predict)
+            # mean value
+            ic(total_score_cal[self.opt.model_type].keys())
+            for score_key in total_score_cal[self.opt.model_type].keys():
+                total_score_cal[self.opt.model_type][score_key] /= task_num
+            # resultfile.writelines(result_list)
+            # json.dump(total_score_cal,resultfile)
+            json.dump(total_score_cal, predict_data_path)
+            # for robothow: / 1000 * 6.66666666 for report (150/1000)

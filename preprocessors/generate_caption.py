@@ -46,9 +46,9 @@ def generate_caption(image_path):
         sample_path = os.path.join(image_path, f"task_{task_idx}")
         if not os.path.exists(sample_path): continue
         # step_num = len(os.listdir(sample_path))
-        step_num = len(glob.glob1(sample_path,"step_*.png"))
-        for step_idx in range(step_num):            
-            img = Image.open(os.path.join(sample_path, f"step_{step_idx}.png"))
+        step_num = len(glob.glob1(sample_path,"step_*.png" if "wikihow" in image_path else "step_*.jpg"))
+        for step_idx in range(1, step_num+1):            
+            img = Image.open(os.path.join(sample_path, f"step_{step_idx}.png" if "wikihow" in image_path else f"step_{step_idx}.jpg"))
             patch_img = patch_resize_transform(img).unsqueeze(0)
             generator = sequence_generator.SequenceGenerator(
                 tokenizer=tokenizer,

@@ -9,6 +9,7 @@ import os
 import openai
 from evaluators.automatic_eval import Automatic_Evaluator
 
+MAX_STEPS = 20
 # load_dotenv()
 # openai.api_key = opt.api_key #"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"
 
@@ -50,22 +51,40 @@ class LLM_Reasoning(object):
         self.translation_lm_id = 'stsb-roberta-large'  # see comments above for all options
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.generator = LM_Engine(self.model, self.planning_lm_id, self.device)
-        self.result_list = []
         self.data_type = opt.data_type
         self.max_tokens = opt.max_tokens
         
+        # m-plan
+        self.task_prediced_steps = []
+        self.curr_prompt = ""
+        self.result_list = []
+        self.step_sequence = []
+        self.task_eval_predict = ""
+
         openai.api_key = opt.api_key
         self.sampling_params = \
                 {
                     "max_tokens": self.max_tokens,
-                    "temperature": 0.6,
+                    "temperature": 0.7,
                     "top_p": 0.9,
                     "n": 10,
                     "logprobs": 1,
-                    "presence_penalty": 0.5,
-                    "frequency_penalty": 0.3,
+                    "presence_penalty": 1,
+                    "frequency_penalty": 1,
                     "stop": '\n'
                 }
+        # For MPP debug
+        # self.sampling_params = \
+        #         {
+        #             "max_tokens": self.max_tokens,
+        #             "temperature": 0.7,
+        #             "top_p": 1,
+        #             "n": 10,
+        #             "logprobs": 1,
+        #             "presence_penalty": 2,
+        #             "frequency_penalty": 2,
+        #             "stop": '\n'
+        #         }
         if opt.do_eval_each:
             self.total_score_cal = {}
             method_type=opt.model_type
@@ -74,9 +93,53 @@ class LLM_Reasoning(object):
                 self.total_score_cal[model_type_item] = {"sentence-bleu": 0, "wmd": 0, "rouge-1-f": 0, "rouge-1-p": 0, "rouge-1-r": 0, "bert-score-f": 0, "bert-score-p": 0, "bert-score-r": 0, "meteor": 0, "sentence-bert-score": 0, "caption-t-bleu": 0, "LCS": 0, "caption-t-bleu": 0, "caption-vcap-lcs": 0, "gpt3-plan-accuracy": 0, "caption-gpt3-plan-accuracy": 0, "vplan-t-clip-score": 0, "tplan-v-clip-score": 0, "vplan-v-clip-score": 0, "tplan-t-clip-score": 0}
             self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
     
+    def ask_prompt(self, input_text):
+        """
+        - Physical Action
+        Option 1:
+        The task is how to surf. Learn to stand on the board properly
+
+        What do I need to draw in the picture to describe the above text to show the action?
+
+        In the picture, you would draw a person standing on a surfboard with their feet spread apart and arms outstretched. You could also draw waves in the background to show the person surfing.
+        
+        Option 2:
+        pick up the wine glass
+
+        What do I need to draw in the picture to describe the above text to show the action?
+
+        You would need to draw a person with their hand reaching out to pick up a wine glass.
+        
+        - Visual Description
+        The task is how to surf. Practice regularly. The more you practice, the better and more confident you will become.
+
+        What do I need to draw in the picture to describe the above text?
+
+        In the picture, you could draw a person standing on a surfboard in the ocean, with waves in the background. You could also draw a sun in the sky to indicate the time of day. Finally, you could add a speech bubble with the words "Practice regularly" to emphasize the importance of regular practice.
+        
+        - Plan Consistency with incorporation of Task
+        use_task_hint
+        
+        - Negative Prompt
+        Prompt: a person stands and a dog sits
+        Negative Prompt:a person sits
+
+        """
+        # prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text?" # Summarize in one sentence.
+        prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text? Reply with the content you need to visualize directly."
+        response = self.completion.create(
+            prompt=prompt, engine="text-davinci-003", temperature=0.7,
+            top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
+            max_tokens=self.max_tokens)
+        answer = response.choices[0].text.strip().strip('-').strip('_').strip('\n')
+        # if "would need to draw" in answer:
+        #     answer = answer[answer.index("to draw")+8:]
+        return answer
+
     def ask_openloop(self, task_eval_predict, curr_prompt):
         if self.model_type == "task_only_base":
             prompt = "what is the step-by-step procedure of " + task_eval_predict + " without explanation "
+            ic(prompt)                
         else:
             # for robothow PLAN
             # prompt = "What is the step-by-step procedure of " + curr_prompt + "\nWhat is the step-by-step procedure of " + task_eval_predict + " without explanation "
@@ -85,56 +148,53 @@ class LLM_Reasoning(object):
             # prompt = curr_prompt + ", what is the executable step-by-step robot plan of " + task_eval_predict + " without explanation "
             prompt = "A possible procedural plan is: " + curr_prompt + ", think of implementing " + task_eval_predict + " within 5 steps "
         response = self.completion.create(
-            prompt=prompt, engine="text-davinci-002", temperature=0.7,
-            top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
-            max_tokens=120 if self.data_type == "wikihow" else self.max_tokens)
+            prompt=prompt, engine="text-davinci-003", temperature=0.7,
+            top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
+            max_tokens=self.max_tokens)
         answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
         return [f"Step {item}" for item in answer if len(item) > 3]
 
-    def ask(self, prompt):
-        prompt = "what is the step-by-step procedure of " + prompt + " without explanation "
-        # ic(prompt)
+    def ask(self, prompt, step_idx):
+        if step_idx == 1:
+            # prompt = "what is the step-by-step procedure of " + prompt + " without explanation "
+            prompt = prompt + "\n what is the first step of above task in one sentence?"
+        else:
+            # prompt = prompt + "\n what is the next step of above procedure in one sentence? Reply with END if there is no more need for another step to complete the task."
+            # prompt = prompt + "\n what is the next step of the above procedure in one sentence? Reply END if this is the final step."
+            prompt = prompt + "\n what is the next step of the above procedure in one sentence? Reply \"END\" if the procedure is complete and already reached the final step."
+            ic(prompt)
+        
         import time
         time.sleep(3)
         try:
             response = self.completion.create(
-                prompt=prompt, engine="text-davinci-002", temperature=0.7,
-                top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
+                prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
                 max_tokens=30)
         except:
             time.sleep(10)
             try:
                 response = self.completion.create(
-                    prompt=prompt, engine="text-davinci-002", temperature=0.7,
-                    top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
+                    prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                    top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
                     max_tokens=30)
             except:
                 time.sleep(20)
                 response = self.completion.create(
-                    prompt=prompt, engine="text-davinci-002", temperature=0.7,
-                    top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
+                    prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                    top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
                     max_tokens=30)
-        answer = response.choices[0].text.strip().strip('-').strip('_')
+        answer = response.choices[0].text.strip().strip('-').strip('_').strip('\n').strip('\t')
+        ic(answer)
         return answer
 
     def language_planning(self, total_score_cal, data_example, sample_result_dir="", write_step_result=False):
-        # global example_task_embedding
-        # global action_list_embedding
-
         task = data_example["tasks"]# if not opt.model_type == "concept_knowledge" else "Hang up jacket in bedroom"
         if write_step_result:
-            with open(os.path.join(sample_result_dir, f"step_0.txt"), 'w') as f:
+            with open(os.path.join(sample_result_dir, f"task.txt"), 'w') as f:
                 f.write(f"{task}")
         if self.model_type == "task_only_base":
             curr_prompt = task+'.' #+ "<|endoftext|>" 
-        # else:
-        #     # find most relevant example        
-        #     example_idx, _ = find_most_similar(task, example_task_embedding)
-        #     example = heldout_available_examples[example_idx]
-        #     ic(len(example_task_embedding), example)
-        #     # construct initial prompt
-        #     curr_prompt = f'{example}\n\n{task}.'
-        
 
         self.result_list.append('\n' + '-'*10 + ' GIVEN EXAMPLE ' + '-'*10+'\n')
         task_eval_groundtruth = task + '. ' + str(data_example["steps"])
@@ -146,7 +206,7 @@ class LLM_Reasoning(object):
         step_sequence = []
         if True: #self.open_loop:
             generated_list = self.ask_openloop(task_eval_predict, curr_prompt)
-            # ic(generated_list)
+            ic(generated_list)
             translated_list = []
             for step_idx, each_step in enumerate(generated_list):
                 # most_similar_idx, matching_score = find_most_similar(each_step, action_list_embedding)
@@ -172,7 +232,7 @@ class LLM_Reasoning(object):
             return self.result_list
 
 
-    def generate_language_plan(self, opt, task_result_dir, summarize_example_data_list):
+    def generate_language_plan(self, opt, task_result_dir, summarize_example_data_list, sample=None, step_idx=-1):
         if opt.do_eval_each:
             if not os.path.isdir(task_result_dir): os.makedirs(task_result_dir)
             with open(os.path.join(task_result_dir, "{}_task_result.txt".format(opt.language_model_type)), 'w') as resultfile:
@@ -188,10 +248,29 @@ class LLM_Reasoning(object):
                 json.dump(self.total_score_cal,resultfile)
                 ic(self.total_score_cal[opt.model_type])
         else:
-            # TODO: write down step_n.txt, and full_prediction.txt
-            for task_idx, data_example in enumerate(summarize_example_data_list):
-                sample_result_dir = os.path.join(task_result_dir, "task_{}".format(str(task_idx)))
-                if not os.path.isdir(sample_result_dir): os.makedirs(sample_result_dir)
-                result_list = self.language_planning(None, data_example, sample_result_dir=sample_result_dir, write_step_result=True)
-            
-    
+            if opt.task in ["c-plan", "m-plan"]:
+                if step_idx == 1:
+                    self.curr_prompt = sample["tasks"]
+                    os.makedirs(task_result_dir, exist_ok=True)
+                    with open(os.path.join(task_result_dir, "task.txt"), 'w') as f:
+                        f.write(f"{self.curr_prompt}")
+                best_action = self.ask(self.curr_prompt, step_idx)
+                plan_termination = (step_idx > MAX_STEPS) or ("END" in best_action) or ("End" in best_action and len(best_action) < 5) # GPT3 reach end token EOS
+                if plan_termination: return plan_termination, None
+                self.task_prediced_steps.append(best_action)
+                formatted_action = f'Step {step_idx}: {best_action}' if not "Step" in best_action else best_action
+                with open(os.path.join(task_result_dir, "step_{}.txt".format(str(step_idx))), 'w') as f:
+                    f.write(f"{formatted_action}")
+                self.curr_prompt += f'\n{formatted_action}'
+                self.result_list.append(f'{formatted_action}')
+                self.step_sequence.append(best_action)
+                self.task_eval_predict += f' {formatted_action}'
+                return plan_termination, best_action 
+            else:
+                for task_idx, data_example in enumerate(summarize_example_data_list):
+                    exist_task_num = len(os.listdir(task_result_dir))
+                    start_task_idx = (task_idx + exist_task_num - 1) if self.opt.resume else task_idx
+                    sample_result_dir = os.path.join(task_result_dir, "task_{}".format(str(start_task_idx)))
+                    if not os.path.isdir(sample_result_dir): os.makedirs(sample_result_dir)
+                    result_list = self.language_planning(None, data_example, sample_result_dir=sample_result_dir, write_step_result=True)
+                
