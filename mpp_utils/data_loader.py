@@ -35,10 +35,11 @@ class Data_Loader(object):
                     task_start_idx_list.append(all_step_count)
                     all_step_count += 1
                     gt_sample_path = os.path.join(gt_data_path, f"task_{task_idx}")
-                    step_num = len(glob.glob1(gt_sample_path,"step_*.txt"))
+                    step_num = len(glob.glob1(gt_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9].txt"))
                     with open(os.path.join(gt_sample_path, f"task.txt"), 'r') as ft:
                         task = ft.readline()
                         data.append(task)
+                    ic(gt_sample_path, step_num)
                     for step_idx in range(1, step_num+1):
                         with open(os.path.join(gt_sample_path, f"step_{step_idx}.txt"), 'r') as fs:
                             step = fs.readline()
@@ -58,11 +59,12 @@ class Data_Loader(object):
                     if not os.path.exists(sample_path):
                         continue
                     task_start_idx_list.append(all_step_count)
+                    all_step_count += 1
                     # step_num = len(os.listdir(sample_path))
                     with open(os.path.join(sample_path, f"task.txt"), 'r') as f:
                         task = f.readline()
                         data.append(task)
-                    step_num = len(glob.glob1(sample_path,"step_*.txt"))
+                    step_num = len(glob.glob1(sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9].txt"))
                     for step_idx in range(1, step_num+1):
                         all_step_count += 1
                         with open(os.path.join(sample_path, f"step_{step_idx}.txt"), 'r') as f:
@@ -71,9 +73,9 @@ class Data_Loader(object):
                                 current_text = "The task is {} {}".format(task, current_text)
                             # if opt.use_bridge:
                             #     current_text = self.llm_reasoning_engine.ask_prompt(current_text)
-                            step_list.append(current_text)
+                            # step_list.append(current_text)
                             data.append(current_text)
-                    summarize_example_data_list.append({"tasks": task, "steps": step_list})
+                    # summarize_example_data_list.append({"tasks": task, "steps": step_list})
             data = list(chunk(data, batch_size))
         return data, task_start_idx_list, summarize_example_data_list
 

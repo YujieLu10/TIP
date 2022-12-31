@@ -57,4 +57,19 @@ CUDA_VISIBLE_DEVICES=4 python planning.py --task u-plan
 CUDA_VISIBLE_DEVICES=4 python planning.py --task m-plan
 ```
 
+## Caption Generation
+```
+CUDA_VISIBLE_DEVICES=7 python preprocessors/generate_caption.py --source groundtruth_input
+CUDA_VISIBLE_DEVICES=7 python preprocessors/generate_caption.py --source experiment_output
+```
 
+## Evaluation
+
+```
+CUDA_VISIBLE_DEVICES=7 python planning.py --eval --data_type wikihow --eval_task all
+```
+
+## Plan Grid Visualization
+```
+CUDA_VISIBLE_DEVICES=7 python amt_platform/generate_plan_grid.py --source groundtruth_input
+```

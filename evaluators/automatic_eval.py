@@ -9,10 +9,12 @@ from tqdm import tqdm
 import glob
 from icecream import ic
 import json
+from PIL import Image
 
 class Automatic_Evaluator(object):
-    def __init__(self, opt) -> None:
+    def __init__(self, opt, task_name) -> None:
         self.opt = opt
+        self.task_name = task_name
         self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2').cuda()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.clip_model, self.preprocess = clip.load("ViT-B/32", device=self.device)
@@ -21,7 +23,6 @@ class Automatic_Evaluator(object):
         self.nlp_encoder = spacy.load('en_core_web_md')
         
     def lcs(self, X, Y, m, n):
-    
         if m == 0 or n == 0:
             return 0
         elif X[m-1] == Y[n-1]:
@@ -36,10 +37,41 @@ class Automatic_Evaluator(object):
         score = st_utils.pytorch_cos_sim(embedding_1, embedding_2).item()
         return score
 
+    def calculate_sample_step_score(self, predict_data_path, task_idx, step_idx, total_score_cal, tep, ctep, use_bridge, step_num):
+        # Table 3, consider to merge with Table 2
+        text_input = torch.cat([clip.tokenize(tep)]).to(self.device)
+        image = Image.open(os.path.join(predict_data_path, f"task_{task_idx}", f"step_{step_idx}{use_bridge}.jpg" if (self.task_name == "vgt-u-plan" and self.opt.data_type == "recipeqa") else f"step_{step_idx}{use_bridge}.png"))
+        image_input = self.preprocess(image).unsqueeze(0).to(self.device).to(self.device)
+        # total_score_cal["vplan-t-clip-score"] += 0
+        # total_score_cal["tplan-v-clip-score"] += 0
+        # total_score_cal["vplan-v-clip-score"] += 0
+        # total_score_cal["tplan-t-clip-score"] += 0
+
+        with torch.no_grad():
+            pre_features = self.clip_model.encode_text(text_input)
+            vplan_features = self.clip_model.encode_image(image_input)
+            pre_features /= pre_features.norm(dim=-1, keepdim=True)
+            vplan_features /= vplan_features.norm(dim=-1, keepdim=True)
+            similarity = (100.0 * pre_features @ vplan_features.T).softmax(dim=-1)
+            # ic(similarity.cpu().item())
+            # # TODO: debug
+            # ic(similarity.detach().cpu().numpy())
+            total_score_cal["vplan-tplan-clip-score"] += similarity.cpu().item() / step_num
+        
+        total_score_cal["vplancap-tplan-sent-bert"] += 0 / step_num
+        total_score_cal["vplancap-tplan-bert-f1"] += 0 / step_num
+        # total_score_cal["caption-vcap-sent-bert"] += 0
+        # total_score_cal["caption-vcap-bert-f1"] += 0
+        # total_score_cal["tplan-t-cider"] += self.cider.compute_score(task_eval_groundtruth, task_eval_predict)
+        # total_score_cal["caption-t-cider"] += 0
+        # total_score_cal["caption-vcap-cider"] += 0
+        return total_score_cal
+
     def calculate_sample_score(self, total_score_cal, task_eval_groundtruth, task_eval_predict, visual_task_eval_groundtruth, visual_task_eval_predict, caption_task_eval_groundtruth, caption_task_eval_predict):
         import nltk
         task_eval_groundtruth = task_eval_groundtruth.replace('.', ' ')
         task_eval_predict = task_eval_predict.replace('.', ' ')
+        # ic(task_eval_predict, task_eval_groundtruth)
         total_score_cal["sentence-bleu"] += nltk.translate.bleu_score.sentence_bleu([task_eval_groundtruth.split()], task_eval_predict.split())
         total_score_cal["wmd"] += self.nlp_encoder(task_eval_groundtruth).similarity(self.nlp_encoder(task_eval_predict))
         from rouge import Rouge
@@ -56,44 +88,20 @@ class Automatic_Evaluator(object):
             total_score_cal["bert-score-p"] += bert_results["precision"][0]
             total_score_cal["bert-score-r"] += bert_results["recall"][0]
         except:
-            pass
-        
-        total_score_cal["meteor"] += self.meteor.compute(predictions=[task_eval_predict], references=[task_eval_groundtruth])
+            ic()
+        total_score_cal["meteor"] += self.meteor.compute(predictions=[task_eval_predict], references=[task_eval_groundtruth])["meteor"]
         
         # Table 2
         total_score_cal["sentence-bert-score"] += self.similariry_score(task_eval_predict, task_eval_groundtruth)
         
         total_score_cal["caption-t-bleu"] += 0
         total_score_cal["caption-vcap-bleu"] += 0
-        
-        total_score_cal["lcs"] += self.lcs(task_eval_predict, task_eval_groundtruth, len(task_eval_predict), len(task_eval_groundtruth))
-        total_score_cal["caption-t-lcs"] += 0
-        total_score_cal["caption-vcap-lcs"] += 0
+        # total_score_cal["lcs"] += self.lcs(task_eval_predict, task_eval_groundtruth, len(task_eval_predict), len(task_eval_groundtruth))
+        # total_score_cal["caption-t-lcs"] += 0
+        # total_score_cal["caption-vcap-lcs"] += 0
         
         total_score_cal["gpt3-plan-accuracy"] += 0
         total_score_cal["caption-gpt3-plan-accuracy"] += 0
-        
-        # Table 3
-        # image_input = preprocess(image).unsqueeze(0).to(device)
-        total_score_cal["vplan-t-clip-score"] += 0
-        total_score_cal["tplan-v-clip-score"] += 0
-        total_score_cal["vplan-v-clip-score"] += 0
-        with torch.no_grad():
-            pre_features = self.clip_model(torch.cat([clip.tokenize(task_eval_predict)]).to(self.device))
-            gt_features = self.clip_model(torch.cat([clip.tokenize(task_eval_groundtruth)]).to(self.device))
-            pre_features /= pre_features.norm(dim=-1, keepdim=True)
-            gt_features /= gt_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ gt_features.T).softmax(dim=-1)
-            total_score_cal["tplan-t-clip-score"] += similarity
-        
-        # total_score_cal["caption-t-sent-bert"] += 0
-        # total_score_cal["caption-t-bert-f1"] += 0
-        # total_score_cal["caption-vcap-sent-bert"] += 0
-        # total_score_cal["caption-vcap-bert-f1"] += 0
-        # total_score_cal["tplan-t-cider"] += self.cider.compute_score(task_eval_groundtruth, task_eval_predict)
-        # total_score_cal["caption-t-cider"] += 0
-        # total_score_cal["caption-vcap-cider"] += 0
-        
         return total_score_cal
     
     
@@ -113,7 +121,7 @@ class Automatic_Evaluator(object):
                 # TODO: incorporate with Pan's crawled data and RecipeQA
                 gt_sample_path = os.path.join(gt_data_path, f"task_{task_idx}")
                 if not os.path.exists(sample_path): continue
-                step_num = len(glob.glob1(sample_path,"step_*.txt"))
+                step_num = len(glob.glob1(gt_sample_path,"step_[0-9]_bridge_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9].txt"))
                 # TODO: load image array
                 visual_task_eval_predict = ""
                 visual_task_eval_groundtruth = ""
@@ -123,43 +131,57 @@ class Automatic_Evaluator(object):
                 caption_task_eval_groundtruth = ""
                 # skip task evaluate
                 for step_idx in range(1, step_num+1):
-                    task_eval_predict += self.get_content(sample_path, step_idx, "")
+                    task_eval_predict += self.get_content(gt_sample_path if self.opt.task in ["tgt-u-plan"] else sample_path, step_idx, "")
                     task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "")
                     caption_task_eval_predict += self.get_content(sample_path, step_idx, "_caption")
                     caption_task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "_caption")               
         else:
             return self.calculate_sample_score(total_score_cal, task_eval_groundtruth, task_eval_predict, visual_task_eval_groundtruth, visual_task_eval_predict, caption_task_eval_groundtruth, caption_task_eval_predict)
         
-        
-        def eval_all(self, outpath):
-            predict_data_path = outpath
-            gt_data_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input/{}".format(self.opt.data_type))
-            task_num = self.opt.task_num if self.opt.task_num > 0 else len(os.listdir(predict_data_path))
-            for task_idx in tqdm(range(task_num)):
-                predict_sample_path = os.path.join(predict_data_path, f"task_{task_idx}")
-                # TODO: incorporate with Pan's crawled data and RecipeQA
-                gt_sample_path = os.path.join(gt_data_path, f"task_{task_idx}")
-                if not os.path.exists(predict_sample_path): continue
-                step_num = len(glob.glob1(predict_sample_path,"step_*.txt"))
-                # TODO: load image array
-                visual_task_eval_predict = ""
-                visual_task_eval_groundtruth = ""
-                task_eval_predict = ""
-                task_eval_groundtruth = ""
-                caption_task_eval_predict = ""
-                caption_task_eval_groundtruth = ""
-                # skip task evaluate
-                for step_idx in range(1, step_num+1):
-                    task_eval_predict += self.get_content(predict_sample_path, step_idx, "")
-                    task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "")
-                    caption_task_eval_predict += self.get_content(predict_sample_path, step_idx, "_caption")
-                    caption_task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "_caption")
-                task_total_score_cal = self.calculate_sample_score(total_score_cal, task_eval_groundtruth, task_eval_predict, visual_task_eval_groundtruth, visual_task_eval_predict, caption_task_eval_groundtruth, caption_task_eval_predict)
-            # mean value
-            ic(total_score_cal[self.opt.model_type].keys())
-            for score_key in total_score_cal[self.opt.model_type].keys():
-                total_score_cal[self.opt.model_type][score_key] /= task_num
-            # resultfile.writelines(result_list)
-            # json.dump(total_score_cal,resultfile)
-            json.dump(total_score_cal, predict_data_path)
-            # for robothow: / 1000 * 6.66666666 for report (150/1000)
+    
+    def eval_all(self, outpath, use_bridge):        
+        total_score_cal = {"sentence-bleu": 0, "wmd": 0, "rouge-1-f": 0, "rouge-1-p": 0, "rouge-1-r": 0, "bert-score-f": 0, "bert-score-p": 0, "bert-score-r": 0, "meteor": 0, "sentence-bert-score": 0, "caption-t-bleu": 0, "caption-vcap-bleu": 0, "lcs": 0, "caption-t-lcs": 0, "caption-vcap-lcs": 0, "gpt3-plan-accuracy": 0, "caption-gpt3-plan-accuracy": 0, "vplan-t-clip-score": 0, "tplan-v-clip-score": 0, "vplan-v-clip-score": 0, "tplan-t-clip-score": 0, "vplan-tplan-clip-score": 0, "caption-t-sent-bert": 0, "caption-t-bert-f1": 0, "caption-vcap-sent-bert": 0, "caption-vcap-bert-f1": 0, "vplancap-tplan-sent-bert": 0, "vplancap-tplan-bert-f1": 0, "avg_length": 0, "gt_avg_length": 0}
+        predict_data_path = outpath
+        gt_data_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input/{}".format(self.opt.data_type))
+        task_num = self.opt.task_num if self.opt.task_num > 0 else len(os.listdir(predict_data_path))
+        for task_idx in tqdm(range(task_num)):
+            predict_sample_path = os.path.join(predict_data_path, f"task_{task_idx}")
+            gt_sample_path = os.path.join(gt_data_path, f"task_{task_idx}")
+            if not os.path.exists(predict_sample_path): continue
+            visual_task_eval_predict = ""
+            visual_task_eval_groundtruth = ""
+            task_eval_predict = ""
+            task_eval_groundtruth = ""
+            caption_task_eval_predict = ""
+            caption_task_eval_groundtruth = ""
+            # skip task evaluate
+            # TODO: fix bug, step num of gt and predict are different, should load seperately
+            step_num = len(glob.glob1(predict_sample_path,"step_[0-9]_bridge_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9].txt"))
+            total_score_cal["avg_length"] += step_num
+            for step_idx in range(1, step_num+1):
+                tep = self.get_content(gt_sample_path if (self.task_name in ["tgt-u-plan"] and use_bridge == "") else predict_sample_path, step_idx, f"{use_bridge}_caption" if self.task_name in ["vgt-u-plan"] else f"{use_bridge}")
+                if len(use_bridge): tep = f"Step {step_idx}: {tep}"
+                task_eval_predict = task_eval_predict + " " + tep
+                ctep = self.get_content(predict_sample_path, step_idx, f"{use_bridge}_caption")
+                ctep = f"Step {step_idx}: {ctep}"
+                caption_task_eval_predict = caption_task_eval_predict + " " + ctep
+                total_score_cal = self.calculate_sample_step_score(predict_data_path, task_idx, step_idx, total_score_cal, tep, ctep, use_bridge, step_num)
+            step_num = len(glob.glob1(gt_sample_path,"step_[0-9]_bridge_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9].txt"))
+            total_score_cal["gt_avg_length"] += step_num
+            for step_idx in range(1, step_num+1):
+                teg = self.get_content(gt_sample_path, step_idx, "")
+                task_eval_groundtruth += teg
+                cteg = self.get_content(gt_sample_path, step_idx, "_caption")
+                caption_task_eval_groundtruth += cteg
+            total_score_cal = self.calculate_sample_score(total_score_cal, task_eval_groundtruth, task_eval_predict, visual_task_eval_groundtruth, visual_task_eval_predict, caption_task_eval_groundtruth, caption_task_eval_predict)
+            # ic(total_score_cal)
+        # mean value
+        for score_key in total_score_cal.keys():
+            total_score_cal[score_key] /= task_num
+            total_score_cal[score_key] = round(total_score_cal[score_key], 4)
+        # resultfile.writelines(result_list)
+        # json.dump(total_score_cal,resultfile)
+        # with open(os.path.join(predict_data_path, f"all_total_score_cal{use_bridge}.txt"), 'w') as resultfile:
+        #     json.dump(total_score_cal, resultfile)
+        csv_line = [self.task_name] + [use_bridge] + [total_score_cal["sentence-bleu"]] + [total_score_cal["wmd"]] + [total_score_cal["rouge-1-f"]] + [total_score_cal["bert-score-f"]] + [total_score_cal["meteor"]] + [total_score_cal["sentence-bert-score"]] + [total_score_cal["vplan-tplan-clip-score"]] + [total_score_cal["avg_length"]] + [total_score_cal["gt_avg_length"]]
+        return csv_line

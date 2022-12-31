@@ -24,7 +24,7 @@ class Image_Verbalizing(object):
             transforms.ToTensor(), 
             transforms.Normalize(mean=mean, std=std)
         ])
-        # device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         ckpt_dir='../submodules/OFA-tiny'
         tokenizer = OFATokenizer.from_pretrained(ckpt_dir)
 
@@ -32,23 +32,24 @@ class Image_Verbalizing(object):
         self.inputs = tokenizer([txt], return_tensors="pt").input_ids
         
         self.model = OFAModel.from_pretrained(self.ckpt_dir, use_cache=False)
-        # model = model.to(device)
-
-    def get_caption(self, img_path):
-        img = Image.open(img_path)
-        patch_img = self.patch_resize_transform(img).unsqueeze(0)
-        generator = sequence_generator.SequenceGenerator(
+        self.model = self.model.to(device)
+        
+        self.generator = sequence_generator.SequenceGenerator(
             tokenizer=self.tokenizer,
             beam_size=10,
             max_len_b=160,
             min_len=20,
             no_repeat_ngram_size=3,
-        )
+        ).to(device)
+
+    def get_caption(self, img_path):
+        img = Image.open(img_path)
+        patch_img = self.patch_resize_transform(img).unsqueeze(0)
 
         data = {}
-        data["net_input"] = {"input_ids": self.inputs, 'patch_images': patch_img, 'patch_masks':torch.tensor([True])}
+        data["net_input"] = {"input_ids": self.inputs.to(device), 'patch_images': patch_img.to(device), 'patch_masks':torch.tensor([True]).to(device)}
         # using the generator of fairseq version
-        gen_output = generator.generate([self.model], data)
+        gen_output = self.generator.generate([self.model], data)
         gen = [gen_output[i][0]["tokens"] for i in range(len(gen_output))]
 
         caption = self.tokenizer.batch_decode(gen, skip_special_tokens=True)[0].strip()
@@ -64,7 +65,7 @@ class Image_Verbalizing(object):
                 sample_path = os.path.join(self.outpath, f"task_{task_idx}")
                 if not os.path.exists(sample_path): continue
                 # step_num = len(os.listdir(sample_path))
-                step_num = len(glob.glob1(sample_path,"step_*.png"))
+                step_num = len(glob.glob1(sample_path,"step_[0-9]_bridge.png")) or len(glob.glob1(sample_path,"step_[0-9].png"))
                 for step_idx in range(1, step_num+1):   
                     img_path = os.path.join(sample_path, f"step_{step_idx}.png")         
                     caption = self.get_caption(img_path)

@@ -30,4 +30,5 @@ streamlit-drawable-canvas==0.8.0
 icecream
 hydra-core
 evaluate
+rouge
 -e .

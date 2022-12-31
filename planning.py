@@ -1,5 +1,6 @@
 import os
 import sys
+import csv
 sys.path.append("submodules")
 sys.path.append("submodules/stablediffusion")
 sys.path.append("models")
@@ -71,6 +72,12 @@ def parse_args():
         type=str,
         help="task",
         default="m-plan"
+    )
+    parser.add_argument(
+        "--eval_task",
+        type=str,
+        help="eval_task",
+        default="all"
     )
     parser.add_argument(
         "--resolution",
@@ -211,8 +218,24 @@ def main(opt):
     config = OmegaConf.load(f"{os.path.join(opt.config_root, resolution_config, task_config)}")
     
     if opt.eval:
-        evaluator = Automatic_Evaluator(opt)
-        evaluator.eval_all(outpath)
+        exp_path = os.path.join(opt.outdir, "experiment_output", resolution_config, opt.data_type)
+        metric_csv_line = []
+        if opt.eval_task == "all":
+            with open(os.path.join(exp_path, "all_metric.csv"), 'w') as csvfile:
+                writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
+                head_line = ['task_name', 'w. bridge' 'sentence-bleu', 'wmd', 'rouge-1-f', 'bert-score-f', 'meteor', 'sentence-bert-score', 'vplan-tplan-clip-score', 'avg_length', 'gt_avg_length']
+                writer.writerow(head_line)
+                for task_name in os.listdir(exp_path):
+                    if task_name == "all_metric.csv": continue
+                    evaluator = Automatic_Evaluator(opt, task_name)
+                    task_path = os.path.join(exp_path, task_name)
+                    bridge_list = ["", "_bridge"] if task_name in ["tgt-u-plan", "u-plan", "c-plan"] else [""]
+                    for item in bridge_list:
+                        metric_csv_line = evaluator.eval_all(task_path, item)
+                        writer.writerow(metric_csv_line)
+        else:
+            evaluator = Automatic_Evaluator(opt, opt.task)
+            task_path = os.path.join(exp_path, opt.task)
     else:
         if opt.task in ["tgt-u-plan", "vgt-u-plan", "u-plan"]:
             baseline_planner = Baseline_Planner(opt, config, outpath)

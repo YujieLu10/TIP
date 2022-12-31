@@ -4,6 +4,7 @@ from icecream import ic
 import json
 import glob
 import shutil
+import time
 
 from LLM_Reasoning import LLM_Reasoning
 from preprocessors.generate_caption import generate_caption
@@ -38,7 +39,7 @@ class Baseline_Planner(Base_Planner):
                     task_path = os.path.join(task_result_dir, "task_{}".format(task_idx))
                     os.makedirs(task_path, exist_ok=True)
                     gt_task_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input", opt.data_type, "task_{}".format(task_idx))
-                    step_num = len(glob.glob1(gt_task_path,"step_*.txt"))
+                    step_num = len(glob.glob1(gt_task_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_task_path,"step_[0-9].txt"))
                     shutil.copyfile(os.path.join(gt_task_path, "task.txt"), os.path.join(task_path, "task.txt"))
                     for step_idx in range(1, step_num+1):
                         if opt.data_type == "wikihow":
@@ -54,11 +55,11 @@ class Baseline_Planner(Base_Planner):
 
                 
     def start_planning(self):
-        _, _, summarize_example_data_list = self.data_loader.load_sample(self.opt, self.config, load_task=True, out_path=self.outpath)
         # if self.opt.task_num > 0: summarize_example_data_list = summarize_example_data_list[:self.opt.task_num]
         if self.opt.task == "u-plan":
-            ic(summarize_example_data_list)
-            self.open_loop_textual_plan_generation(summarize_example_data_list)
+            # _, _, summarize_example_data_list = self.data_loader.load_sample(self.opt, self.config, load_task=True, out_path=self.outpath)
+            # # ic(summarize_example_data_list)
+            # self.open_loop_textual_plan_generation(summarize_example_data_list)
             self.open_loop_visual_plan_generation()
         elif self.opt.task == "tgt-u-plan": # text to image generation
             self.open_loop_visual_plan_generation()
