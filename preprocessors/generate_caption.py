@@ -32,7 +32,8 @@ def generate_caption(image_path):
         transforms.Normalize(mean=mean, std=std)
     ])
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    ckpt_dir='submodules/OFA-tiny'
+    # ckpt_dir='submodules/OFA-tiny'
+    ckpt_dir='submodules/OFA-base'
     tokenizer = OFATokenizer.from_pretrained(ckpt_dir)
 
     txt = " what does the image describe?"

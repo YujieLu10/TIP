@@ -84,7 +84,7 @@ class Image_Generation(object):
             except:
                 imgdata.save(path)
     
-    def save_plan_data(self, sample_path, x_samples, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count):
+    def save_plan_data(self, sample_path, x_samples, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, openai_error=False):
         for x_sample, x_prompt in zip(x_samples, prompts):
             if all_step_count in task_start_idx_list:
                 task_count += 1
@@ -94,7 +94,7 @@ class Image_Generation(object):
                 os.makedirs(sample_path, exist_ok=True)
 
             # all_samples.append(x_sample)
-            if self.opt.t2i_model_type == "stablediffusion":
+            if self.opt.t2i_model_type == "stablediffusion" or openai_error:
                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                 img = Image.fromarray(x_sample.astype(np.uint8))
                 img = put_watermark(img, self.wm_encoder)
@@ -156,6 +156,7 @@ class Image_Generation(object):
 
         x_samples = model.decode_first_stage(samples)
         x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
+        return x_samples
 
     
     def generate_with_stablediffusion(self, data, task_start_idx_list, step_idx, task_idx, is_using_bridge=False):
@@ -210,21 +211,24 @@ class Image_Generation(object):
         base_count = len(os.listdir(sample_path))
 
         for prompts in tqdm(data, desc="data"):
-            if isinstance(prompts, tuple):
-                prompts = list(prompts)
+            openai_error = False
             try:
-                response = openai.Image.create(
-                    prompt=prompts[0],
-                    n=1,
-                    size="512x512"
-                )
-                image_url = response['data'][0]['url']
-                img_data = requests.get(image_url).content
+                if isinstance(prompts, tuple):
+                    prompts = list(prompts)
+                img_data = prompts[20]
+                # response = openai.Image.create(
+                #     prompt=prompts[0],
+                #     n=1,
+                #     size="512x512"
+                # )
+                # image_url = response['data'][0]['url']
+                # img_data = requests.get(image_url).content
                 # img_data.save("test_image.jpg")
                 # with open('image_name.jpg', 'wb') as handler:
                 #     handler.write(img_data)
             except:
                 ic(prompts[0])
+                openai_error = True
                 # OPENAI safety system prompt request reject
                 model = self.model
                 opt = self.opt
@@ -238,9 +242,13 @@ class Image_Generation(object):
                 start_code = None
                 if opt.fixed_code:
                     start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=self.device)
-                img_data = self.diffusion_generation(self.opt, prompts, model, sampler, batch_size, start_code)
+                precision_scope = autocast if opt.precision == "autocast" else nullcontext
+                with torch.no_grad(), \
+                    precision_scope("cuda"), \
+                    model.ema_scope():
+                    img_data = self.diffusion_generation(self.opt, prompts, model, sampler, batch_size, start_code)
                 
-            sample_path, sample_count, task_count, step_count, all_step_count, base_count = self.save_plan_data(sample_path, img_data, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count)
+            sample_path, sample_count, task_count, step_count, all_step_count, base_count = self.save_plan_data(sample_path, img_data, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, openai_error)
     
     def generate_image(self, data, task_start_idx_list=[], step_idx=-1, task_idx=-1):
         if not self.opt.only_use_bridge:
