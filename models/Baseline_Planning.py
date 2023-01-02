@@ -18,7 +18,7 @@ class Baseline_Planner(Base_Planner):
         self.outpath = outpath
         self.opt = opt
         self.config = config
-        self.automatic_evaluator = Automatic_Evaluator(self.opt)
+        # self.automatic_evaluator = Automatic_Evaluator(self.opt)
         self.data_loader = Data_Loader(opt)
                 
     def open_loop_visual_plan_generation(self):
@@ -39,7 +39,7 @@ class Baseline_Planner(Base_Planner):
                     task_path = os.path.join(task_result_dir, "task_{}".format(task_idx))
                     os.makedirs(task_path, exist_ok=True)
                     gt_task_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input", opt.data_type, "task_{}".format(task_idx))
-                    step_num = len(glob.glob1(gt_task_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_task_path,"step_[0-9].txt"))
+                    step_num = len(glob.glob1(gt_task_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(gt_task_path,"step_[0-9]*.txt"))
                     shutil.copyfile(os.path.join(gt_task_path, "task.txt"), os.path.join(task_path, "task.txt"))
                     for step_idx in range(1, step_num+1):
                         if opt.data_type == "wikihow":
@@ -61,7 +61,7 @@ class Baseline_Planner(Base_Planner):
             # # ic(summarize_example_data_list)
             # self.open_loop_textual_plan_generation(summarize_example_data_list)
             self.open_loop_visual_plan_generation()
-        elif self.opt.task == "tgt-u-plan": # text to image generation
+        elif self.opt.task in ["tgt-u-plan", "tgt-u-plan-dalle"]: # text to image generation
             self.open_loop_visual_plan_generation()
         elif self.opt.task == "vgt-u-plan": # image caption
             self.open_loop_textual_plan_generation(None)

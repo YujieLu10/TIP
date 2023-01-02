@@ -87,7 +87,10 @@ class LLM_Reasoning(object):
         #         }
         if opt.do_eval_each:
             self.total_score_cal = {"sentence-bleu": 0, "wmd": 0, "rouge-1-f": 0, "rouge-1-p": 0, "rouge-1-r": 0, "bert-score-f": 0, "bert-score-p": 0, "bert-score-r": 0, "meteor": 0, "sentence-bert-score": 0, "caption-t-bleu": 0, "LCS": 0, "caption-t-bleu": 0, "caption-vcap-lcs": 0, "gpt3-plan-accuracy": 0, "caption-gpt3-plan-accuracy": 0, "vplan-t-clip-score": 0, "tplan-v-clip-score": 0, "vplan-v-clip-score": 0, "tplan-t-clip-score": 0}
-            self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
+            # self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
+    
+    def visual_plan_conditioned_textual_plan_revision(self):
+        pass
     
     def ask_prompt(self, input_text):
         """
@@ -223,7 +226,8 @@ class LLM_Reasoning(object):
         # ic(model_type, task, sentence_bleu([task_eval_groundtruth.split()], task_eval_predict.split()), nlp_encoder(task_eval_groundtruth).similarity(nlp_encoder(task_eval_predict)))
         # ic(task, len(task_eval_groundtruth), len(task_eval_predict))
         if self.opt.do_eval_each:
-            return self.lm_automatic_evaluator.calculate_total_score(total_score_cal=total_score_cal, task_eval_groundtruth=task_eval_groundtruth, task_eval_predict=task_eval_predict), self.result_list
+            return self.result_list
+            # return self.lm_automatic_evaluator.calculate_total_score(total_score_cal=total_score_cal, task_eval_groundtruth=task_eval_groundtruth, task_eval_predict=task_eval_predict), self.result_list
         else:
             return self.result_list
 

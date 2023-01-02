@@ -121,7 +121,7 @@ class Automatic_Evaluator(object):
                 # TODO: incorporate with Pan's crawled data and RecipeQA
                 gt_sample_path = os.path.join(gt_data_path, f"task_{task_idx}")
                 if not os.path.exists(sample_path): continue
-                step_num = len(glob.glob1(gt_sample_path,"step_[0-9]_bridge_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9].txt"))
+                step_num = len(glob.glob1(gt_sample_path,"step_[0-9]*_bridge_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]*.txt"))
                 # TODO: load image array
                 visual_task_eval_predict = ""
                 visual_task_eval_groundtruth = ""
@@ -131,7 +131,7 @@ class Automatic_Evaluator(object):
                 caption_task_eval_groundtruth = ""
                 # skip task evaluate
                 for step_idx in range(1, step_num+1):
-                    task_eval_predict += self.get_content(gt_sample_path if self.opt.task in ["tgt-u-plan"] else sample_path, step_idx, "")
+                    task_eval_predict += self.get_content(gt_sample_path if self.opt.task in ["tgt-u-plan", "tgt-u-plan-dalle"] else sample_path, step_idx, "")
                     task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "")
                     caption_task_eval_predict += self.get_content(sample_path, step_idx, "_caption")
                     caption_task_eval_groundtruth += self.get_content(gt_sample_path, step_idx, "_caption")               
@@ -156,17 +156,17 @@ class Automatic_Evaluator(object):
             caption_task_eval_groundtruth = ""
             # skip task evaluate
             # TODO: fix bug, step num of gt and predict are different, should load seperately
-            step_num = len(glob.glob1(predict_sample_path,"step_[0-9]_bridge_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9].txt"))
+            step_num = len(glob.glob1(predict_sample_path,"step_[0-9]*_bridge_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9]*.txt"))
             total_score_cal["avg_length"] += step_num
             for step_idx in range(1, step_num+1):
-                tep = self.get_content(gt_sample_path if (self.task_name in ["tgt-u-plan"] and use_bridge == "") else predict_sample_path, step_idx, f"{use_bridge}_caption" if self.task_name in ["vgt-u-plan"] else f"{use_bridge}")
+                tep = self.get_content(gt_sample_path if (self.task_name in ["tgt-u-plan", "tgt-u-plan-dalle"] and use_bridge == "") else predict_sample_path, step_idx, f"{use_bridge}_caption" if self.task_name in ["vgt-u-plan"] else f"{use_bridge}")
                 if len(use_bridge): tep = f"Step {step_idx}: {tep}"
                 task_eval_predict = task_eval_predict + " " + tep
                 ctep = self.get_content(predict_sample_path, step_idx, f"{use_bridge}_caption")
                 ctep = f"Step {step_idx}: {ctep}"
                 caption_task_eval_predict = caption_task_eval_predict + " " + ctep
                 total_score_cal = self.calculate_sample_step_score(predict_data_path, task_idx, step_idx, total_score_cal, tep, ctep, use_bridge, step_num)
-            step_num = len(glob.glob1(gt_sample_path,"step_[0-9]_bridge_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9].txt"))
+            step_num = len(glob.glob1(gt_sample_path,"step_[0-9]*_bridge_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(gt_sample_path,"step_[0-9]*.txt"))
             total_score_cal["gt_avg_length"] += step_num
             for step_idx in range(1, step_num+1):
                 teg = self.get_content(gt_sample_path, step_idx, "")

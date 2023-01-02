@@ -1,6 +1,40 @@
 # MPP
 Multimodal-Procedural-Planning
 
+##
+
+TODO
+Implementation
+- [x] dalle pilot study (budge control) 1/1 "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system."
+- [] add base model (other caption model, and dalle-mini) 1/1 1/2
+- [] final ours model implementation using gpt3 revision 1/2
+- [] AMT instruction html revision 1/2
+    - [] 1. plan generation step/task text enlarge, consider 6 image / per row
+    - [] 2. enlarge width of question box layout
+- [] metric correlation calculation 1/2
+- [] ttest significance 1/2
+
+Evaluation
+- [x] human evaluation pilot study 1/1
+- [x] human Tab - size 5 1/1
+- [] main Tab - size 50 1/2
+- [] ablation Tab - size 50 1/2
+- [] showcase 1/2
+- [] Pilot Study: analysis & visualization 1/2
+- [] Revision and Full experiment launch 1/2
+- [] full human Tab - size 100*2 1/3
+- [] full main Tab - size 200*2 1/3
+- [] full ablation Tab - size 200*2 1/3
+- [] full analysis & visualization 1/3
+
+Paper
+- [x] related doc to Pan Lu 1/1
+- [] experiment sec 1/2
+- [] method sec 1/3
+- [] introduction sec 1/4
+- [] ACL abstract submission 1/5
+- [] first draft version
+
 ## Installation
 
 ```
@@ -55,6 +89,11 @@ CUDA_VISIBLE_DEVICES=4 python planning.py --task tgt-u-plan
 CUDA_VISIBLE_DEVICES=4 python planning.py --task vgt-u-plan
 CUDA_VISIBLE_DEVICES=4 python planning.py --task u-plan
 CUDA_VISIBLE_DEVICES=4 python planning.py --task m-plan
+
+# t2i ablation
+CUDA_VISIBLE_DEVICES=6 python planning.py --task tgt-u-plan-dalle --data_type wikihow --debug --t2i_model_type dalle --task_num 1
+
+# caption model ablation
 ```
 
 ## Caption Generation
@@ -71,5 +110,17 @@ CUDA_VISIBLE_DEVICES=7 python planning.py --eval --data_type wikihow --eval_task
 
 ## Plan Grid Visualization
 ```
-CUDA_VISIBLE_DEVICES=7 python amt_platform/generate_plan_grid.py --source groundtruth_input
+CUDA_VISIBLE_DEVICES=7 python amt_platform/generate_plan_grid.py --source experiment_output
 ```
+
+## Human Evaluation
+Data Uploading Address: https://s3.console.aws.amazon.com/s3/buckets/mpp-ig?region=us-west-1&tab=objects
+
+Img Url Example: https://mpp-ig.s3.us-west-1.amazonaws.com/gt/wikihow/task_999/step_1.png
+
+CSV Generation
+```
+CUDA_VISIBLE_DEVICES=7 python amt_platform/get_amt_h2h_csv.py --source experiment_output
+```
+
+Batch Results Analysis

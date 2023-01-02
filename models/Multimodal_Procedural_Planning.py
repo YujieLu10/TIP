@@ -22,7 +22,7 @@ class MPP_Planner(Base_Planner):
         self.config = config
         self.llm_reasoning_engine = LLM_Reasoning(self.opt)
         self.image_generator = Image_Generation(self.opt, self.config, self.outpath)
-        self.automatic_evaluator = Automatic_Evaluator(self.opt)
+        # self.automatic_evaluator = Automatic_Evaluator(self.opt)
     
     def closed_loop_textual_plan_generation(self, task_result_dir, sample, step_idx):
         # Closed-loop Single Step Textual Plan Generation (LLM, GPT3)
@@ -57,7 +57,7 @@ class MPP_Planner(Base_Planner):
         if open_loop:
             # text plan revise
             pass
-        else:
+        else: # c-plan
             # close loop condition on multimodal generated plan
             # if self.opt.task_num > 0: self.summarize_example_data_list = self.summarize_example_data_list[:self.opt.task_num]
             exist_task_num = len(os.listdir(self.outpath))

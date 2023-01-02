@@ -202,6 +202,9 @@ def parse_args():
     # parser.add_argument('--use_bridge', action='store_true', help='demo')
     parser.add_argument('--only_use_bridge', action='store_true', help='demo')
     parser.add_argument('--use_task_hint', action='store_true', help='demo')
+    
+    parser.add_argument('--caption_model_type', choices=['ofa', '??'], default="ofa", help='choices')
+    parser.add_argument('--t2i_model_type', choices=['stablediffusion', 'dalle'], default="stablediffusion", help='choices')
     opt = parser.parse_args()
     return opt
 
@@ -229,7 +232,7 @@ def main(opt):
                     if task_name == "all_metric.csv": continue
                     evaluator = Automatic_Evaluator(opt, task_name)
                     task_path = os.path.join(exp_path, task_name)
-                    bridge_list = ["", "_bridge"] if task_name in ["tgt-u-plan", "u-plan", "c-plan"] else [""]
+                    bridge_list = ["", "_bridge"] if task_name in ["tgt-u-plan", "tgt-u-plan-dalle", "u-plan", "c-plan"] else [""]
                     for item in bridge_list:
                         metric_csv_line = evaluator.eval_all(task_path, item)
                         writer.writerow(metric_csv_line)
@@ -237,13 +240,15 @@ def main(opt):
             evaluator = Automatic_Evaluator(opt, opt.task)
             task_path = os.path.join(exp_path, opt.task)
     else:
-        if opt.task in ["tgt-u-plan", "vgt-u-plan", "u-plan"]:
+        if opt.task in ["tgt-u-plan", "tgt-u-plan-dalle", "vgt-u-plan", "u-plan"]:
             baseline_planner = Baseline_Planner(opt, config, outpath)
             baseline_planner.start_planning()
         else: # c-plan m-plan
             mpp_planner = MPP_Planner(opt, config, outpath)
-            mpp_planner.start_planning()
-
+            if opt.task in ["c-plan"]:
+                mpp_planner.start_planning(open_loop=False)
+            else:
+                mpp_planner.start_planning(open_loop=True)
 
 if __name__ == "__main__":
     import datetime

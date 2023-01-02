@@ -55,7 +55,7 @@ def generate_caption(image_path):
         # step_num = len(os.listdir(sample_path))
         # jpg for groundtruth input
         for postfix in ["_bridge", ""]:
-            step_num = len(glob.glob1(sample_path,"step_[0-9]_bridge.png" if "wikihow" in image_path else "step_[0-9]_bridge.png")) or len(glob.glob1(sample_path,"step_[0-9].png" if "wikihow" in image_path else "step_[0-9].png"))
+            step_num = len(glob.glob1(sample_path,"step_[0-9]*_bridge.png" if "wikihow" in image_path else "step_[0-9]*_bridge.png")) or len(glob.glob1(sample_path,"step_[0-9]*.png" if "wikihow" in image_path else "step_[0-9]*.png"))
             
             for step_idx in range(1, step_num+1):            
                 img = Image.open(os.path.join(sample_path, f"step_{step_idx}{postfix}.png" if "wikihow" in image_path else f"step_{step_idx}{postfix}.png"))

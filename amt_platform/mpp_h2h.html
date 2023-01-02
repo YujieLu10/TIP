@@ -8,8 +8,8 @@
         width: 100vw;
     }
     .question-img {
-        max-width: 50%; 
-        max-height: 250px; 
+        max-width: 100%; 
+        max-height: 500px; 
         margin-bottom: 10px
     }
     .choices {
@@ -104,41 +104,45 @@
     </div>
     <div class="problem-wrapper">
         <p class="question-txt"><b>
-        <p><strong>${task1_txt}</strong></p>
+        <p><strong>${task_txt}</strong></p>
 
-        <p><strong>Sequence 1: </strong>${steps1_txt}</p>
-        <img src=${task1_img} alt="task1_image" class="question-img" />
+        <p><strong>Sequence 1: </strong></p>
+        <img src=${plan1_grid_path} alt="task1_image" class="question-img" />
     
-        <p><strong>Sequence 2: </strong>${steps2_txt}</p>
-        <img src=${task2_img} alt="task2_image" class="question-img" />
+        <p><strong>Sequence 2: </strong></p>
+        <img src=${plan2_grid_path} alt="task2_image" class="question-img" />
         </b></p>
       
-     <p><strong>Select an Option: Textual Info?</strong>
-      <crowd-radio-group>
-          <crowd-radio-button name="oti_1" value="1">1 - Sequence 1 is better</crowd-radio-button>
-          <crowd-radio-button name="oti_2" value="2">2 - Tie</crowd-radio-button>
-          <crowd-radio-button name="oti_3" value="3">3 - Sequence 2 is better</crowd-radio-button>
+     <p><strong>Select an Option: [Please only consider texts in this option.] Which sequence contains richer <u>Textual-Informativeness</u>? The richer the sequnce, the information in the textual plan (Step 1: ..., Step N: ...) is more enough for completing the given Task (on the top of each sequence)?</strong>
+        <br>
+      <crowd-radio-group required>
+          <crowd-radio-button name="oti" value="1">1 - Sequence 1 is better</crowd-radio-button>
+          <crowd-radio-button name="oti" value="2">2 - Tie</crowd-radio-button>
+          <crowd-radio-button name="oti" value="3">3 - Sequence 2 is better</crowd-radio-button>
       </crowd-radio-group></p>
 
-     <p><strong>Select an Option: Visual Info?</strong>
+     <p><strong>Select an Option: [Please only consider images in this option.] Which sequence contains richer <u>Visual-Informativeness</u>? The richer the sequnce, the information in the visual plan (each image below each step) is more enough for completing the given Task (on the top of each sequence)?</strong>
+        <br>
       <crowd-radio-group required>
-          <crowd-radio-button name="oti_1" value="1">1 - Sequence 1 is better</crowd-radio-button>
-          <crowd-radio-button name="oti_2" value="2">2 - Tie</crowd-radio-button>
-          <crowd-radio-button name="oti_3" value="3">3 - Sequence 2 is better</crowd-radio-button>
+          <crowd-radio-button name="ovi" value="1">1 - Sequence 1 is better</crowd-radio-button>
+          <crowd-radio-button name="ovi" value="2">2 - Tie</crowd-radio-button>
+          <crowd-radio-button name="ovi" value="3">3 - Sequence 2 is better</crowd-radio-button>
       </crowd-radio-group></p>
     
-     <p><strong>Select an Option: Temporal Logic?</strong>
-      <crowd-radio-group>
-          <crowd-radio-button name="oti_1" value="1">1 - Sequence 1 is better</crowd-radio-button>
-          <crowd-radio-button name="oti_2" value="2">2 - Tie</crowd-radio-button>
-          <crowd-radio-button name="oti_3" value="3">3 - Sequence 2 is better</crowd-radio-button>
+     <p><strong>Select an Option: [Please consider both texts and images in this option.] Which sequence has better <u>Temporal Logic</u>>? In other words, the multimodal (text and image) plan obey to commonsense knowledge in real-world that certain steps should happen before others. </strong>
+        <br>
+      <crowd-radio-group required>
+          <crowd-radio-button name="otl" value="1">1 - Sequence 1 is better</crowd-radio-button>
+          <crowd-radio-button name="otl" value="2">2 - Tie</crowd-radio-button>
+          <crowd-radio-button name="otl" value="3">3 - Sequence 2 is better</crowd-radio-button>
       </crowd-radio-group></p>
 
-     <p><strong>Select an Option: Plan Accuracy?</strong>
+     <p><strong>Select an Option: [Please consider both texts and images in this option.] Which sequence can achieve higher <u>Plan Accuracy</u>>? In other words, can the multimodal (text and image) plan successfully complete the given Task?</strong>
+        <br>
       <crowd-radio-group required>
-          <crowd-radio-button name="oti_1" value="1">1 - Sequence 1 is better</crowd-radio-button>
-          <crowd-radio-button name="oti_2" value="2">2 - Tie</crowd-radio-button>
-          <crowd-radio-button name="oti_3" value="3">3 - Sequence 2 is better</crowd-radio-button>
+          <crowd-radio-button name="opa" value="1">1 - Sequence 1 is better</crowd-radio-button>
+          <crowd-radio-button name="opa" value="2">2 - Tie</crowd-radio-button>
+          <crowd-radio-button name="opa" value="3">3 - Sequence 2 is better</crowd-radio-button>
       </crowd-radio-group></p>
     </div>  
 </crowd-form>
