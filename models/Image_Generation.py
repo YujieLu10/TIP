@@ -26,7 +26,8 @@ from LLM_Reasoning import LLM_Reasoning
 from tqdm import tqdm, trange
 from icecream import ic
 
-openai.api_key = "sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm"
+# openai.api_key = "sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm"
+openai.api_key = "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"
 
 def chunk(it, size):
     it = iter(it)
@@ -113,6 +114,7 @@ class Image_Generation(object):
                 if not is_using_bridge:
                     self.save_image(img, os.path.join(sample_path, f"step_{step_count}.png" if step_count > 0 else "task.png"))
                 if is_using_bridge:
+                    ic(sample_path)
                     with open(os.path.join(sample_path, f"step_{step_count}_bridge.txt" if step_count > 0 else f"task_bridge.txt"), 'w') as f:
                         f.write(f"{x_prompt}")
                     self.save_image(img, os.path.join(sample_path, f"step_{step_count}_bridge.png" if step_count > 0 else f"task_bridge.png"))
@@ -215,14 +217,14 @@ class Image_Generation(object):
             try:
                 if isinstance(prompts, tuple):
                     prompts = list(prompts)
-                img_data = prompts[20]
-                # response = openai.Image.create(
-                #     prompt=prompts[0],
-                #     n=1,
-                #     size="512x512"
-                # )
-                # image_url = response['data'][0]['url']
-                # img_data = requests.get(image_url).content
+                # img_data = prompts[20]
+                response = openai.Image.create(
+                    prompt=prompts[0],
+                    n=1,
+                    size="512x512"
+                )
+                image_url = response['data'][0]['url']
+                img_data = requests.get(image_url).content
                 # img_data.save("test_image.jpg")
                 # with open('image_name.jpg', 'wb') as handler:
                 #     handler.write(img_data)
@@ -256,7 +258,7 @@ class Image_Generation(object):
                 self.generate_with_dalle(data, task_start_idx_list, step_idx, task_idx)
             else:
                 self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx)
-        # TODO: update data for bridge
+        # update data for bridge
         data = [tuple([self.llm_reasoning_engine.ask_prompt(xdata)]) for xdata in data]
         if self.opt.t2i_model_type == "dalle":
             self.generate_with_dalle(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True)

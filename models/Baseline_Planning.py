@@ -32,7 +32,7 @@ class Baseline_Planner(Base_Planner):
     def open_loop_textual_plan_generation(self, summarize_example_data_list):
         opt, config, outpath = self.opt, self.config, self.outpath
         task_result_dir = outpath
-        if self.opt.task == "vgt-u-plan": #self.config.mpp_model.task_config.ground_truth_modality == "visual": # image caption
+        if self.opt.task in ["vgt-u-plan", "vgt-u-plan-blip"]: #self.config.mpp_model.task_config.ground_truth_modality == "visual": # image caption
             exist_task_num = len(os.listdir(task_result_dir))
             if exist_task_num == 0 or (opt.resume and exist_task_num < opt.task_num):
                 for task_idx in range(0 if not opt.resume else exist_task_num-1, opt.task_num):
@@ -48,7 +48,10 @@ class Baseline_Planner(Base_Planner):
                         else:
                             img_name = f"step_{step_idx}.jpg"
                             shutil.copyfile(os.path.join(gt_task_path, img_name), os.path.join(task_path, img_name))
-            generate_caption(task_result_dir)
+            if opt.caption_model_type == "blip":
+                generate_caption(task_result_dir, use_blip=True, bridge_list=[""])
+            else:
+                generate_caption(task_result_dir, bridge_list=[""])
         else:
             llm_reasoning_engine = LLM_Reasoning(opt)
             llm_reasoning_engine.generate_language_plan(opt, task_result_dir, summarize_example_data_list)
@@ -56,14 +59,14 @@ class Baseline_Planner(Base_Planner):
                 
     def start_planning(self):
         # if self.opt.task_num > 0: summarize_example_data_list = summarize_example_data_list[:self.opt.task_num]
-        if self.opt.task == "u-plan":
-            # _, _, summarize_example_data_list = self.data_loader.load_sample(self.opt, self.config, load_task=True, out_path=self.outpath)
-            # # ic(summarize_example_data_list)
-            # self.open_loop_textual_plan_generation(summarize_example_data_list)
+        if self.opt.task in ["u-plan", "m-plan"]:
+            _, _, summarize_example_data_list = self.data_loader.load_sample(self.opt, self.config, load_task=True, out_path=self.outpath)
+            # ic(summarize_example_data_list)
+            self.open_loop_textual_plan_generation(summarize_example_data_list)
             self.open_loop_visual_plan_generation()
         elif self.opt.task in ["tgt-u-plan", "tgt-u-plan-dalle"]: # text to image generation
             self.open_loop_visual_plan_generation()
-        elif self.opt.task == "vgt-u-plan": # image caption
+        elif self.opt.task in ["vgt-u-plan", "vgt-u-plan-blip"]: # image caption
             self.open_loop_textual_plan_generation(None)
         # eval_path = self.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
         # self.automatic_evaluator.calculate_total_score(total_score_cal=self.total_score_cal, from_task_path=eval_path)

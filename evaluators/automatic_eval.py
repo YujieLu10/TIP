@@ -40,7 +40,7 @@ class Automatic_Evaluator(object):
     def calculate_sample_step_score(self, predict_data_path, task_idx, step_idx, total_score_cal, tep, ctep, use_bridge, step_num):
         # Table 3, consider to merge with Table 2
         text_input = torch.cat([clip.tokenize(tep)]).to(self.device)
-        image = Image.open(os.path.join(predict_data_path, f"task_{task_idx}", f"step_{step_idx}{use_bridge}.jpg" if (self.task_name == "vgt-u-plan" and self.opt.data_type == "recipeqa") else f"step_{step_idx}{use_bridge}.png"))
+        image = Image.open(os.path.join(predict_data_path, f"task_{task_idx}", f"step_{step_idx}{use_bridge}.jpg" if (self.task_name in ["vgt-u-plan", "vgt-u-plan-blip"] and self.opt.data_type == "recipeqa") else f"step_{step_idx}{use_bridge}.png"))
         image_input = self.preprocess(image).unsqueeze(0).to(self.device).to(self.device)
         # total_score_cal["vplan-t-clip-score"] += 0
         # total_score_cal["tplan-v-clip-score"] += 0
@@ -159,7 +159,7 @@ class Automatic_Evaluator(object):
             step_num = len(glob.glob1(predict_sample_path,"step_[0-9]*_bridge_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(predict_sample_path,"step_[0-9]*.txt"))
             total_score_cal["avg_length"] += step_num
             for step_idx in range(1, step_num+1):
-                tep = self.get_content(gt_sample_path if (self.task_name in ["tgt-u-plan", "tgt-u-plan-dalle"] and use_bridge == "") else predict_sample_path, step_idx, f"{use_bridge}_caption" if self.task_name in ["vgt-u-plan"] else f"{use_bridge}")
+                tep = self.get_content(gt_sample_path if (self.task_name in ["tgt-u-plan", "tgt-u-plan-dalle"] and use_bridge == "") else predict_sample_path, step_idx, f"{use_bridge}_caption" if self.task_name in ["vgt-u-plan", "vgt-u-plan-blip"] else f"{use_bridge}")
                 if len(use_bridge): tep = f"Step {step_idx}: {tep}"
                 task_eval_predict = task_eval_predict + " " + tep
                 ctep = self.get_content(predict_sample_path, step_idx, f"{use_bridge}_caption")

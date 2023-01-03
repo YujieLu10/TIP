@@ -12,49 +12,112 @@ import glob
 from tqdm import tqdm
 import torch
 
+
+from pathlib import Path
+
+from PIL import Image
+import torch
+from torchvision import transforms
+from torchvision.transforms.functional import InterpolationMode
+# import cog
+import sys
+sys.path.append("submodules")
+sys.path.append("submodules/BLIP")
+from models.blip import blip_decoder
+
+
+class Predictor(object):
+    def __init__(self) -> None:
+        self.device = "cuda:0"
+
+        self.models = {
+            'image_captioning': blip_decoder(pretrained='/share/edc/home/yujielu/MPP_data/model_base_caption_capfilt_large.pth',
+                                             image_size=384, vit='base'),
+        }
+
+    def predict(self, image, task):
+        im = load_image(image, image_size=384, device=self.device)
+        model = self.models[task]
+        model.eval()
+        model = model.to(self.device)
+
+        if task == 'image_captioning':
+            with torch.no_grad():
+                caption = model.generate(im, sample=False, num_beams=3, max_length=20, min_length=5)
+                # return 'Caption: ' + caption[0]
+                return caption[0]
+
+def load_image(image, image_size, device):
+    raw_image = Image.open(image).convert('RGB')
+
+    w, h = raw_image.size
+
+    transform = transforms.Compose([
+        transforms.Resize((image_size, image_size), interpolation=InterpolationMode.BICUBIC),
+        transforms.ToTensor(),
+        transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+    ])
+    image = transform(raw_image).unsqueeze(0).to(device)
+    return image
+
+
 class Image_Verbalizing(object):
-    def __init__(self, args) -> None:
+    def __init__(self, opt) -> None:
         super().__init__()
         mean, std = [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]
         resolution = 256
-        self.outpath = args.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
+        self.outpath = opt.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
         self.patch_resize_transform = transforms.Compose([
             lambda image: image.convert("RGB"),
             transforms.Resize((resolution, resolution), interpolation=Image.BICUBIC),
             transforms.ToTensor(), 
             transforms.Normalize(mean=mean, std=std)
         ])
-        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        ckpt_dir='../submodules/OFA-tiny'
-        tokenizer = OFATokenizer.from_pretrained(ckpt_dir)
+        self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        
+        self.opt = opt
+        if self.opt.caption_model_type == "blip":
+            self.predictor = Predictor()
+        else:
+            ckpt_dir='../submodules/OFA-base'
+            tokenizer = OFATokenizer.from_pretrained(ckpt_dir)
 
-        txt = " what does the image describe?"
-        self.inputs = tokenizer([txt], return_tensors="pt").input_ids
-        
-        self.model = OFAModel.from_pretrained(self.ckpt_dir, use_cache=False)
-        self.model = self.model.to(device)
-        
-        self.generator = sequence_generator.SequenceGenerator(
-            tokenizer=self.tokenizer,
-            beam_size=10,
-            max_len_b=160,
-            min_len=20,
-            no_repeat_ngram_size=3,
-        ).to(device)
+            txt = " what does the image describe?"
+            self.inputs = tokenizer([txt], return_tensors="pt").input_ids
+            
+            self.model = OFAModel.from_pretrained(self.ckpt_dir, use_cache=False)
+            self.model = self.model.to(self.device)
+            
+            self.generator = sequence_generator.SequenceGenerator(
+                tokenizer=self.tokenizer,
+                beam_size=10,
+                max_len_b=160,
+                min_len=20,
+                no_repeat_ngram_size=3,
+            ).to(self.device)
 
     def get_caption(self, img_path):
+        if self.opt.caption_model_type == "blip":
+            caption = self.get_caption_blip(img_path)
+        else:
+            caption = self.get_caption_ofa(img_path)
+        return caption
+    
+    def get_caption_ofa(self, img_path):
         img = Image.open(img_path)
         patch_img = self.patch_resize_transform(img).unsqueeze(0)
 
         data = {}
-        data["net_input"] = {"input_ids": self.inputs.to(device), 'patch_images': patch_img.to(device), 'patch_masks':torch.tensor([True]).to(device)}
+        data["net_input"] = {"input_ids": self.inputs.to(self.device), 'patch_images': patch_img.to(self.device), 'patch_masks':torch.tensor([True]).to(self.device)}
         # using the generator of fairseq version
         gen_output = self.generator.generate([self.model], data)
         gen = [gen_output[i][0]["tokens"] for i in range(len(gen_output))]
 
-        caption = self.tokenizer.batch_decode(gen, skip_special_tokens=True)[0].strip()
+        caption = self.tokenizer.batch_decode(gen, skip_special_tokens=True)[0].strip()    
+        
+    def get_caption_blip(self, img_path):
+        caption = self.predictor.predict(image=img_path, task="image_captioning")
         return caption
-
 
     def start_verbalizing(self, single_caption=True, img_path=None):
         if single_caption:

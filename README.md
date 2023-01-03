@@ -54,6 +54,7 @@ pip install -r requirements.txt
 #### Crawling @ Pan
 
 #### Curation
+5个类别  "Food and Entertaining", "Hobbies and Crafts", "Home and Garden", "Pets and Animals", "Sports and Fitness"
 
 #### Re-purposing
 
@@ -78,6 +79,14 @@ https://aclanthology.org/D18-1166.pdf
 
 <!-- - t(v)gt-m-plan: more like text to image generation with temporal dimension (more like image captioning with temporal dimension) -->
 
+Caption Baseline:
+- BLIP w/ ViT-B and CapFilt-L (model_base_caption_capfilt_large.pth)
+- OFA-Base (https://huggingface.co/OFA-Sys/ofa-base)
+
+T2I Baseline:
+- DALLE (OPENAI 512x512)
+- Stablediffusion V2 (v2-1_512-ema-pruned.ckpt)
+
 ```
 # submodules/stablediffusion
 # txt2img applied over wikihow example
@@ -94,6 +103,7 @@ CUDA_VISIBLE_DEVICES=4 python planning.py --task m-plan
 CUDA_VISIBLE_DEVICES=6 python planning.py --task tgt-u-plan-dalle --data_type wikihow --debug --t2i_model_type dalle --task_num 1
 
 # caption model ablation
+CUDA_VISIBLE_DEVICES=6 python planning.py --task vgt-u-plan-blip --data_type wikihow --debug --caption_model_type blip --task_num 1
 ```
 
 ## Caption Generation

@@ -21,7 +21,10 @@ torch.set_grad_enabled(False)
 def parse_args():
     parser = argparse.ArgumentParser()
     # LLM argument
-    parser.add_argument('--api_key', type=str, default="sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm", help='api key')
+    # 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
+    # sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm
+    # 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
+    parser.add_argument('--api_key', type=str, default="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", help='api key')
     parser.add_argument('--language_model_type', choices=['gpt-j-6B', 't5-11b', 'gpt2-1.5B', 'gpt2', 'gpt2-xl', 'gpt3', 'gpt_neo', 't5', 'bart', 'bert', 'roberta'], default="gpt3", help='choices')
     parser.add_argument('--model_type', choices=['concept_knowledge', 'task_only_base', 'base', 'base_tune', 'standard_prompt', 'soft_prompt_tuning', 'chain_of_thought', 'chain_of_cause', 'cmle_ipm', 'cmle_epm', 'irm', 'vae_r', 'rwSAM', 'counterfactual_prompt'], default="task_only_base", help='choices')
     parser.add_argument('--variant_type', choices=['wo_symbolic', 'wo_causality', 'full', 'wo_firsttranslation'], default='full', help='choices')
@@ -203,7 +206,7 @@ def parse_args():
     parser.add_argument('--only_use_bridge', action='store_true', help='demo')
     parser.add_argument('--use_task_hint', action='store_true', help='demo')
     
-    parser.add_argument('--caption_model_type', choices=['ofa', '??'], default="ofa", help='choices')
+    parser.add_argument('--caption_model_type', choices=['ofa', 'blip'], default="ofa", help='choices')
     parser.add_argument('--t2i_model_type', choices=['stablediffusion', 'dalle'], default="stablediffusion", help='choices')
     opt = parser.parse_args()
     return opt
@@ -232,7 +235,7 @@ def main(opt):
                     if task_name == "all_metric.csv": continue
                     evaluator = Automatic_Evaluator(opt, task_name)
                     task_path = os.path.join(exp_path, task_name)
-                    bridge_list = ["", "_bridge"] if task_name in ["tgt-u-plan", "tgt-u-plan-dalle", "u-plan", "c-plan"] else [""]
+                    bridge_list = ["", "_bridge"] if task_name in ["tgt-u-plan", "tgt-u-plan-dalle", "u-plan", "c-plan", "m-plan"] else [""]
                     for item in bridge_list:
                         metric_csv_line = evaluator.eval_all(task_path, item)
                         writer.writerow(metric_csv_line)
@@ -240,14 +243,18 @@ def main(opt):
             evaluator = Automatic_Evaluator(opt, opt.task)
             task_path = os.path.join(exp_path, opt.task)
     else:
-        if opt.task in ["tgt-u-plan", "tgt-u-plan-dalle", "vgt-u-plan", "u-plan"]:
+        if opt.task in ["tgt-u-plan", "tgt-u-plan-dalle", "vgt-u-plan", "vgt-u-plan-blip", "u-plan"]:
             baseline_planner = Baseline_Planner(opt, config, outpath)
             baseline_planner.start_planning()
         else: # c-plan m-plan
             mpp_planner = MPP_Planner(opt, config, outpath)
             if opt.task in ["c-plan"]:
                 mpp_planner.start_planning(open_loop=False)
-            else:
+            else: # m-plan
+                # use u-plan pipeline for visual plan generation
+                baseline_planner = Baseline_Planner(opt, config, outpath)
+                baseline_planner.start_planning()
+                # textual plan revise conditioned on caption
                 mpp_planner.start_planning(open_loop=True)
 
 if __name__ == "__main__":

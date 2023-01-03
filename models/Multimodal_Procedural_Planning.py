@@ -54,7 +54,7 @@ class MPP_Planner(Base_Planner):
 
     def start_planning(self, open_loop=False):
         # load task list
-        if open_loop:
+        if open_loop: # m-plan
             # text plan revise
             pass
         else: # c-plan

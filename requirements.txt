@@ -31,4 +31,7 @@ icecream
 hydra-core
 evaluate
 rouge
+timm==0.4.12
+fairscale==0.4.4
+pycocoevalcap
 -e .

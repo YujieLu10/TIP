@@ -130,6 +130,6 @@ dmypy.json
 
 # checkpoint dir
 submodules/OFA-tiny
-submodules/OFA-base
+# submodules/OFA-base
 submodules/ofa-large
 submodules/ofa-huge
