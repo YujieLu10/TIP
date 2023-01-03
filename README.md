@@ -135,3 +135,31 @@ CUDA_VISIBLE_DEVICES=7 python amt_platform/get_amt_h2h_csv.py --source experimen
 
 Batch Results Analysis
 
+
+## Prompt Template
+Text-to-Image Bridge
+
+----------------------------------------------------------------------------
+1. What do I need to draw in the picture to describe the above text?
+2. Visual description of ""
+3. What do you see in the figure?
+4. Let's think about what we need to visualize to present the above idea.
+5. Describe what the picture corresponding to the text should have.
+----------------------------------------------------------------------------
+1. how to draw a picture
+2. what do you usually draw?
+3. paraphrase the text
+
+Image-to-Text Bridge
+
+----------------------------------------------------------------------------
+1. [Textual Instruction:] [Visualized Instruction:] Rewrite the textual instruction with the knowledge from visualized instruction pair-wisely.
+2. [Plan:] [Visual Imagination:] Revise each step according to the visual imagination.
+3. Let's revise the procedure using the captions.
+4. Step-by-step Procedure [Task] [Text Plan] Paired Captions: [Text Plan Paired Captions] Based on the visual caption, can you revise the step-by-step procedure according to the paired captions?
+5. [Textual Instruction:] [Corresponding Visual Instruction:] Let's revise the textual instruction according to the corresponding visual instruction step-by-step. 
+
+----------------------------------------------------------------------------
+1. What should we do?
+2. what's the correct procedure?
+3. Revise each step to disobey the visual imagination.
