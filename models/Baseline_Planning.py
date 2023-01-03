@@ -28,6 +28,14 @@ class Baseline_Planner(Base_Planner):
         # ic(data, task_start_idx_list)
         image_generator = Image_Generation(opt, config, outpath)
         image_generator.generate_image(data, task_start_idx_list)
+        
+    def open_loop_textual_plan_revision(self):
+        # TODO: add funciton in load_sample to load: tgt, bridge_vplan
+        _, _, example_list = self.data_loader.load_sample(self.opt, self.config, load_task=False, out_path=self.outpath)
+        llm_reasoning_engine = LLM_Reasoning(self.opt)
+        answer_example_list = llm_reasoning_engine.visual_plan_conditioned_textual_plan_revision(self.outpath, example_list)
+        # TODO: answer_example_list => write bridge_tplan
+
     
     def open_loop_textual_plan_generation(self, summarize_example_data_list):
         opt, config, outpath = self.opt, self.config, self.outpath
@@ -65,7 +73,11 @@ class Baseline_Planner(Base_Planner):
             self.open_loop_textual_plan_generation(summarize_example_data_list)
             self.open_loop_visual_plan_generation()
         elif self.opt.task in ["tgt-u-plan", "tgt-u-plan-dalle"]: # text to image generation
-            self.open_loop_visual_plan_generation()
+            if self.opt.template_check:
+                self.open_loop_visual_plan_generation()
+                self.open_loop_textual_plan_revision()
+            else:
+                self.open_loop_visual_plan_generation()
         elif self.opt.task in ["vgt-u-plan", "vgt-u-plan-blip"]: # image caption
             self.open_loop_textual_plan_generation(None)
         # eval_path = self.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"

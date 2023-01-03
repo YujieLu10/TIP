@@ -208,6 +208,10 @@ def parse_args():
     
     parser.add_argument('--caption_model_type', choices=['ofa', 'blip'], default="ofa", help='choices')
     parser.add_argument('--t2i_model_type', choices=['stablediffusion', 'dalle'], default="stablediffusion", help='choices')
+    
+    parser.add_argument('--template_check', action='store_true', help='demo')
+    parser.add_argument('--t2i_bridge', default="t2i-0", help='choices')
+    parser.add_argument('--i2t_bridge', default="i2t-0", help='choices')
     opt = parser.parse_args()
     return opt
 
@@ -218,7 +222,10 @@ def main(opt):
     # common setup
     resolution_config = "resolution_{}".format(opt.resolution)
     # "bridge" if opt.use_bridge else "origin"
-    outpath = os.path.join(opt.outdir, "debug_output" if opt.debug else "experiment_output", resolution_config, opt.data_type, opt.task+("_w_task_hint" if opt.use_task_hint else ""))
+    if opt.template_check:
+        outpath = os.path.join(opt.outdir, "template_eval_output", opt.data_type, opt.task+("_w_task_hint" if opt.use_task_hint else ""))
+    else:
+        outpath = os.path.join(opt.outdir, "debug_output" if opt.debug else "experiment_output", resolution_config, opt.data_type, opt.task+("_w_task_hint" if opt.use_task_hint else ""))
     os.makedirs(outpath, exist_ok=True)
     task_config = opt.task + ".yaml"
     config = OmegaConf.load(f"{os.path.join(opt.config_root, resolution_config, task_config)}")

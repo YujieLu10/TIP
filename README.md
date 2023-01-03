@@ -136,7 +136,10 @@ CUDA_VISIBLE_DEVICES=7 python amt_platform/get_amt_h2h_csv.py --source experimen
 Batch Results Analysis
 
 
-## Prompt Template
+## Prompt Template Check
+```
+python planning.py --task tgt-u-plan --template_check --only_use_bridge
+```
 Text-to-Image Bridge
 
 ----------------------------------------------------------------------------
@@ -157,7 +160,7 @@ Image-to-Text Bridge
 2. [Plan:] [Visual Imagination:] Revise each step according to the visual imagination.
 3. Let's revise the procedure using the captions.
 4. Step-by-step Procedure [Task] [Text Plan] Paired Captions: [Text Plan Paired Captions] Based on the visual caption, can you revise the step-by-step procedure according to the paired captions?
-5. [Textual Instruction:] [Corresponding Visual Instruction:] Let's revise the textual instruction according to the corresponding visual instruction step-by-step. 
+<!-- 5. [Textual Instruction:] [Corresponding Visual Instruction:] Let's revise the textual instruction according to the corresponding visual instruction step-by-step.  -->
 
 ----------------------------------------------------------------------------
 1. What should we do?

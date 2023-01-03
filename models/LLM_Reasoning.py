@@ -90,7 +90,20 @@ class LLM_Reasoning(object):
             # self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
     
     def visual_plan_conditioned_textual_plan_revision(self):
-        pass
+        template_dict = {
+            "i2t-0": "Rewrite the textual instruction with the knowledge from visualized instruction pair-wisely.",
+            "i2t-1": "Revise each step according to the visual imagination.",
+            "i2t-2": "Let's revise the procedure using the captions.",
+            "i2t-3": "Based on the visual caption, can you revise the step-by-step procedure according to the paired captions?",
+            "i2t-4": "What should we do?",
+            "i2t-5": "Revise each step to disobey the visual imagination."
+        }
+        if self.opt.template_check:
+            prompt = template_dict[self.opt.i2t_bridge]
+        else:
+            prompt = ""
+            
+        # TODO: return answer list or single answer
     
     def ask_prompt(self, input_text):
         """
@@ -124,8 +137,19 @@ class LLM_Reasoning(object):
         Negative Prompt:a person sits
 
         """
+        template_dict = {
+            "t2i-0": "What do I need to draw in the picture to describe the above text?",
+            "t2i-1": "What do you see in the figure?",
+            "t2i-2": "Let's think about what we need to visualize to present the above idea.",
+            "t2i-3": "Describe what the picture corresponding to the text should have.",
+            "t2i-4": "What do you usually draw?",
+            "t2i-5": "Paraphrase the text.",
+        }
         # prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text?" # Summarize in one sentence.
-        prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text? Reply with the content you need to visualize directly."
+        if self.opt.template_check:
+            prompt = ''.join(input_text) + "\n{}".format(template_dict[self.opt.t2i_bridge])
+        else:
+            prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text? Reply with the content you need to visualize directly."
         response = self.completion.create(
             prompt=prompt, engine="text-davinci-003", temperature=0.7,
             top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
