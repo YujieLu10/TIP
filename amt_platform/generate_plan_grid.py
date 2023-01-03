@@ -36,14 +36,14 @@ def generate_plan_grid(image_path, bridge_list, output_plan_grid_path, exp_name,
         # step_num = len(os.listdir(sample_path))
         for postfix in bridge_list:
             all_samples = list()
-            if exp_name in ["vgt-u-plan", "tgt-u-plan", "tgt-u-plan-dalle"]:
+            if exp_name in ["vgt-u-plan", "vgt-u-plan-blip", "tgt-u-plan", "tgt-u-plan-dalle"]:
                 glob_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input", data_type, f"task_{task_idx}")
                 step_num = len(glob.glob1(glob_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(glob_path,"step_[0-9]*.txt"))
             else:
                 # jpg for groundtruth input
                 step_num = len(glob.glob1(sample_path,"step_[0-9]*_bridge.png" if "wikihow" in image_path else "step_[0-9]*_bridge.png")) or len(glob.glob1(sample_path,"step_[0-9]*.png" if "wikihow" in image_path else "step_[0-9]*.png"))
             for step_idx in range(1, step_num+1):
-                if exp_name in ["vgt-u-plan"]:
+                if exp_name in ["vgt-u-plan", "vgt-u-plan-blip"]:
                     img = Image.open(os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input", data_type, f"task_{task_idx}", f"step_{step_idx}{postfix}.png" if "wikihow" in image_path else f"step_{step_idx}{postfix}.jpg")).resize((512, 512))
                 else:
                     img = Image.open(os.path.join(sample_path, f"step_{step_idx}{postfix}.png" if "wikihow" in image_path else f"step_{step_idx}{postfix}.png")).resize((512, 512))
@@ -58,7 +58,7 @@ def generate_plan_grid(image_path, bridge_list, output_plan_grid_path, exp_name,
                 # font = ImageFont.load_default()
                 draw = ImageDraw.Draw(image)
                 # position = (10, 10)
-                if exp_name in ["vgt-u-plan"]:
+                if exp_name in ["vgt-u-plan", "vgt-u-plan-blip"]:
                     text_path = os.path.join(sample_path, f"step_{step_idx}{postfix}_caption.txt")
                 elif exp_name in ["tgt-u-plan", "tgt-u-plan-dalle"]:
                     text_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input", data_type, f"task_{task_idx}", f"step_{step_idx}.txt")
@@ -112,7 +112,7 @@ def generate_plan_grid(image_path, bridge_list, output_plan_grid_path, exp_name,
             # grid.save(os.path.join(output_plan_grid_path, f"plan_grid_task_{task_idx}{postfix}.png"))
 
 def get_bridge_list(exp_name):
-    if exp_name in ["tgt-u-plan", "tgt-u-plan-dalle", "u-plan", "c-plan"]:
+    if exp_name in ["tgt-u-plan", "tgt-u-plan-dalle", "u-plan", "c-plan", "m-plan"]:
         bridge_list = ["_bridge", ""]
     else:
         bridge_list = [""]

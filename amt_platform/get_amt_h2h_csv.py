@@ -68,7 +68,7 @@ if __name__ == "__main__":
     data_root = os.path.join(opt.root_path, opt.source, opt.data_type)
     path_dir = [{"exp": opt.ours_model, "path": os.path.join(data_root, "u-plan")}]
     # os.listdir(data_root)
-    for exp_name in ["c-plan", "u-plan", "tgt-u-plan", "dalle", "vgt-u-plan"]: # experiment for comparison
+    for exp_name in ["m-plan", "c-plan", "u-plan", "tgt-u-plan", "tgt-u-plan-dalle", "vgt-u-plan", "vgt-u-plan-blip"]: # experiment for comparison
         # if exp_name in ["m-plan", "all_metrics.csv"]: continue
         path_dir.append({"exp": exp_name, "path": os.path.join(data_root, exp_name)})
     generate_batch_csv(opt, path_dir)
