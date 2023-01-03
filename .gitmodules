@@ -7,3 +7,9 @@
 [submodule "submodules/OFA"]
 	path = submodules/OFA
 	url = https://github.com/OFA-Sys/OFA
+[submodule "submodules/BLIP"]
+	path = submodules/BLIP
+	url = git@github.com:salesforce/BLIP.git
+[submodule "submodules/OFA-base"]
+	path = submodules/OFA-base
+	url = https://huggingface.co/OFA-Sys/OFA-base
