@@ -52,7 +52,7 @@ class Automatic_Evaluator(object):
             vplan_features = self.clip_model.encode_image(image_input)
             pre_features /= pre_features.norm(dim=-1, keepdim=True)
             vplan_features /= vplan_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ vplan_features.T).softmax(dim=-1)
+            similarity = (100.0 * pre_features @ vplan_features.T)#.softmax(dim=-1)
             # ic(similarity.cpu().item())
             # # TODO: debug
             # ic(similarity.detach().cpu().numpy())
