@@ -25,6 +25,7 @@ from LLM_Reasoning import LLM_Reasoning
 
 from tqdm import tqdm, trange
 from icecream import ic
+from LLM_Reasoning import *
 
 # openai.api_key = "sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm"
 openai.api_key = "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"
@@ -76,6 +77,7 @@ class Image_Generation(object):
         self.wm_encoder.set_watermark('bytes', wm.encode('utf-8'))
         
     def save_image(self, imgdata, path):
+        ic(path)
         if self.opt.t2i_model_type == "stablediffusion":
             imgdata.save(path)
         else:
@@ -85,7 +87,8 @@ class Image_Generation(object):
             except:
                 imgdata.save(path)
     
-    def save_plan_data(self, sample_path, x_samples, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, openai_error=False):
+    def save_plan_data(self, sample_path, x_samples, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, openai_error=False, bridge_name=""):
+        ic(bridge_name)
         for x_sample, x_prompt in zip(x_samples, prompts):
             if all_step_count in task_start_idx_list:
                 task_count += 1
@@ -107,17 +110,16 @@ class Image_Generation(object):
                 if not is_using_bridge:
                     self.save_image(img, os.path.join(sample_path, f"step_{step_idx}.png" if step_idx > 0 else "task.png"))
                 if is_using_bridge:
-                    with open(os.path.join(sample_path, f"step_{step_idx}_bridge.txt" if step_idx > 0 else f"task_bridge.txt"), 'w') as f:
+                    with open(os.path.join(sample_path, f"step_{step_idx}_bridge{bridge_name}.txt" if step_idx > 0 else f"task_bridge{bridge_name}.txt"), 'w') as f:
                         f.write(f"{x_prompt}")
-                    self.save_image(img, os.path.join(sample_path, f"step_{step_idx}_bridge.png" if step_idx > 0 else f"task_bridge.png"),img)
+                    self.save_image(img, os.path.join(sample_path, f"step_{step_idx}_bridge{bridge_name}.png" if step_idx > 0 else f"task_bridge{bridge_name}.png"),img)
             else:
                 if not is_using_bridge:
                     self.save_image(img, os.path.join(sample_path, f"step_{step_count}.png" if step_count > 0 else "task.png"))
                 if is_using_bridge:
-                    ic(sample_path)
-                    with open(os.path.join(sample_path, f"step_{step_count}_bridge.txt" if step_count > 0 else f"task_bridge.txt"), 'w') as f:
+                    with open(os.path.join(sample_path, f"step_{step_count}_bridge{bridge_name}.txt" if step_count > 0 else f"task_bridge{bridge_name}.txt"), 'w') as f:
                         f.write(f"{x_prompt}")
-                    self.save_image(img, os.path.join(sample_path, f"step_{step_count}_bridge.png" if step_count > 0 else f"task_bridge.png"))
+                    self.save_image(img, os.path.join(sample_path, f"step_{step_count}_bridge{bridge_name}.png" if step_count > 0 else f"task_bridge{bridge_name}.png"))
 
             step_count += 1
             all_step_count += 1 
@@ -161,7 +163,7 @@ class Image_Generation(object):
         return x_samples
 
     
-    def generate_with_stablediffusion(self, data, task_start_idx_list, step_idx, task_idx, is_using_bridge=False):
+    def generate_with_stablediffusion(self, data, task_start_idx_list, step_idx, task_idx, is_using_bridge=False, bridge_name=""):
         model = self.model
         opt = self.opt
         if opt.plms:
@@ -197,12 +199,12 @@ class Image_Generation(object):
                 for n in trange(opt.n_iter, desc="Sampling"):
                     for prompts in tqdm(data, desc="data"):
                         x_samples = self.diffusion_generation(opt, prompts, model, sampler, batch_size, start_code)
-                        sample_path, sample_count, task_count, step_count, all_step_count, base_count = self.save_plan_data(sample_path, x_samples, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count)
+                        sample_path, sample_count, task_count, step_count, all_step_count, base_count = self.save_plan_data(sample_path, x_samples, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, bridge_name=bridge_name)
 
         print(f"Your samples are ready and waiting for you here: \n{self.outpath} \n"
             f" \nEnjoy.")
 
-    def generate_with_dalle(self, data, task_start_idx_list, step_idx, task_idx, is_using_bridge=False):
+    def generate_with_dalle(self, data, task_start_idx_list, step_idx, task_idx, is_using_bridge=False, bridge_name=""):
         sample_path = self.outpath # os.path.join(outpath, "samples")
         os.makedirs(sample_path, exist_ok=True)
         
@@ -250,7 +252,7 @@ class Image_Generation(object):
                     model.ema_scope():
                     img_data = self.diffusion_generation(self.opt, prompts, model, sampler, batch_size, start_code)
                 
-            sample_path, sample_count, task_count, step_count, all_step_count, base_count = self.save_plan_data(sample_path, img_data, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, openai_error)
+            sample_path, sample_count, task_count, step_count, all_step_count, base_count = self.save_plan_data(sample_path, img_data, prompts, task_start_idx_list, step_idx, task_idx, is_using_bridge, sample_count, task_count, step_count, all_step_count, base_count, openai_error, bridge_name=bridge_name)
     
     def generate_image(self, data, task_start_idx_list=[], step_idx=-1, task_idx=-1):
         if not self.opt.only_use_bridge:
@@ -258,9 +260,18 @@ class Image_Generation(object):
                 self.generate_with_dalle(data, task_start_idx_list, step_idx, task_idx)
             else:
                 self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx)
-        # update data for bridge
-        data = [tuple([self.llm_reasoning_engine.ask_prompt(xdata)]) for xdata in data]
-        if self.opt.t2i_model_type == "dalle":
-            self.generate_with_dalle(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True)
-        else:
-            self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True)
+        # update data for bridge; only m-plan and t2i template check will use the t2i bridge
+        if (self.opt.task in ["m-plan"] and not self.opt.t2i_template_check and not self.opt.i2t_template_check):
+            data = [tuple([self.llm_reasoning_engine.ask_visual_prompt(xdata, self.opt.t2i_bridge)]) for xdata in data]
+            if self.opt.t2i_model_type == "dalle":
+                self.generate_with_dalle(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True)
+            else:
+                self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True)
+        elif self.opt.t2i_template_check:
+            for t2i_bridge in t2i_template_dict.keys():
+                ic(t2i_bridge)
+                data = [tuple([self.llm_reasoning_engine.ask_visual_prompt(xdata, t2i_bridge)]) for xdata in data]
+                if self.opt.t2i_model_type == "dalle":
+                    self.generate_with_dalle(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True, bridge_name=t2i_bridge)
+                else:
+                    self.generate_with_stablediffusion(data, task_start_idx_list, step_idx, task_idx, is_using_bridge=True, bridge_name=t2i_bridge)

@@ -137,6 +137,14 @@ if __name__ == "__main__":
         if opt.source == "groundtruth_input":
             image_path = os.path.join(opt.image_root, opt.source, data_type)
             generate_caption(image_path)
+        elif opt.source == "template_check":    
+            exp_path = os.path.join(opt.image_root, "template_eval_output", data_type, "tgt-u-plan")
+            if opt.eval_task == "all":
+                for task_name in os.listdir(exp_path):
+                    if "t2i" in task_name or task_name == "all_template_metric.csv": continue
+                    task_path = os.path.join(exp_path, task_name)
+                    ic(task_path)
+                    generate_caption(task_path, bridge_list=[""])
         else:
             exp_path = os.path.join(opt.image_root, opt.source, "resolution_512", data_type)
             if opt.eval_task == "all":

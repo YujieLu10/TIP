@@ -8,8 +8,10 @@ import os
 # from dotenv import load_dotenv
 import openai
 from evaluators.automatic_eval import Automatic_Evaluator
+from tqdm import tqdm
+import glob
 
-MAX_STEPS = 20
+MAX_STEPS = 22
 # load_dotenv()
 # openai.api_key = opt.api_key #"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"
 
@@ -26,6 +28,24 @@ LMTYPE_TO_LMID = {
     "bart": "facebook/bart-large"
 }
 
+t2i_template_dict = {
+    "t2i-0": "What do I need to draw in the picture to describe the above text?",
+    "t2i-1": "What do you see in the figure?",
+    "t2i-2": "Let's think about what we need to visualize to present the above idea.",
+    "t2i-3": "Describe what the picture corresponding to the text should have.",
+    "t2i-4": "What do you usually draw?",
+    "t2i-5": "Describe something irrelevant to the above text.",
+}
+        
+i2t_template_dict = {
+    "i2t-0": "Rewrite the textual instruction using the knowledge from visualized instruction pair-wisely. Please keep the same number of steps as the provided procedure.",
+    "i2t-1": "Revise each step according to the visual imagination. Please keep the same number of steps as the provided procedure.",
+    "i2t-2": "Let's revise the procedure using the captions. Please keep the same number of steps as the provided procedure.",
+    "i2t-3": "Based on the visual caption, can you revise the step-by-step procedure according to the paired captions? Please keep the same number of steps as the provided procedure.",
+    "i2t-4": "Provide an interesting procedure to be irrelevant with the captions. Please keep the same number of steps as the provided procedure.",
+    "i2t-5": "Give the textual instruction that disobey the visual captions. Please keep the same number of steps as the provided procedure."
+}
+        
 class LM_Engine(object):
     def __init__(self, model, planning_lm_id, device):
         self.model = model
@@ -89,23 +109,54 @@ class LLM_Reasoning(object):
             self.total_score_cal = {"sentence-bleu": 0, "wmd": 0, "rouge-1-f": 0, "rouge-1-p": 0, "rouge-1-r": 0, "bert-score-f": 0, "bert-score-p": 0, "bert-score-r": 0, "meteor": 0, "sentence-bert-score": 0, "caption-t-bleu": 0, "LCS": 0, "caption-t-bleu": 0, "caption-vcap-lcs": 0, "gpt3-plan-accuracy": 0, "caption-gpt3-plan-accuracy": 0, "vplan-t-clip-score": 0, "tplan-v-clip-score": 0, "vplan-v-clip-score": 0, "tplan-t-clip-score": 0}
             # self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
     
-    def visual_plan_conditioned_textual_plan_revision(self):
-        template_dict = {
-            "i2t-0": "Rewrite the textual instruction with the knowledge from visualized instruction pair-wisely.",
-            "i2t-1": "Revise each step according to the visual imagination.",
-            "i2t-2": "Let's revise the procedure using the captions.",
-            "i2t-3": "Based on the visual caption, can you revise the step-by-step procedure according to the paired captions?",
-            "i2t-4": "What should we do?",
-            "i2t-5": "Revise each step to disobey the visual imagination."
-        }
-        if self.opt.template_check:
-            prompt = template_dict[self.opt.i2t_bridge]
+    def get_revision_plan(self, sample_path, current_revision_sample, template_dict, i2t_bridge):
+        template = i2t_template_dict[i2t_bridge]
+        task = current_revision_sample["tasks"]
+        ori_steps = '\n'.join(current_revision_sample["steps"])
+        captions = '\n'.join(current_revision_sample["captions"])
+        if i2t_bridge == "i2t-0":
+            prompt = f"Textual Instruction:\n{task}\n{ori_steps}\nVisualized Instruction:\n{captions}\n{template}"
+        elif i2t_bridge == "i2t-1":
+            prompt = f"Plan:\n{task}\n{ori_steps}\nVisual Imagination:\n{captions}\n{template}"
+        elif i2t_bridge == "i2t-2":
+            prompt = f"{task}\n{ori_steps}\n{captions}\n{template}"
+        elif i2t_bridge in ["i2t-3", "i2t-4", "i2t-5"]:
+            prompt = f"Step-by-step Procedure:\n{task}\n{ori_steps}\nPaired Captions:\n{captions}\n{template}"
         else:
-            prompt = ""
+            prompt = f"{task}\n{ori_steps}\n{captions}\n{template}"
             
-        # TODO: return answer list or single answer
+        response = self.completion.create(
+            prompt=prompt, engine="text-davinci-003", temperature=0.7,
+            top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
+            max_tokens=self.max_tokens)
+        answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
+        # ic(i2t_bridge, answer)
+        if not "Step" in answer[0]: # i2t_bridge in ["i2t-0", "i2t-1", "i2t-2", "i2t-3"] and 
+            answer = answer[1:]
+        step_num = len(glob.glob1(sample_path,f"step_[0-9]*_bridget2i-0_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9]*_bridge_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9]*.txt"))
+        step_num = min(step_num, len(answer))
+        # after_revision_example_list => write bridge_tplan
+        # ic(i2t_bridge, step_num)
+        for step_idx in range(1, step_num+1):
+            try:
+                with open(os.path.join(sample_path, "step_{}_bridge{}_tplan.txt".format(str(step_idx), str(i2t_bridge) if (self.opt.t2i_template_check or self.opt.i2t_template_check) else "")), 'w') as f:
+                    f.write(answer[step_idx-1])
+            except:
+                break
+
     
-    def ask_prompt(self, input_text):
+    def visual_plan_conditioned_textual_plan_revision(self, outpath, before_revision_example_list):
+        # ic(before_revision_example_list)
+        for task_idx in tqdm(range(self.opt.task_num)):
+            sample_path = os.path.join(outpath, f"task_{task_idx}")
+            current_revision_sample = before_revision_example_list[task_idx]
+            if self.opt.i2t_template_check:
+                for i2t_bridge in i2t_template_dict.keys():
+                    self.get_revision_plan(sample_path, current_revision_sample, i2t_template_dict, i2t_bridge)
+            else:
+                self.get_revision_plan(sample_path, current_revision_sample, i2t_template_dict, self.opt.i2t_bridge)
+    
+    def ask_visual_prompt(self, input_text, t2i_bridge):
         """
         - Physical Action
         Option 1:
@@ -137,32 +188,31 @@ class LLM_Reasoning(object):
         Negative Prompt:a person sits
 
         """
-        template_dict = {
-            "t2i-0": "What do I need to draw in the picture to describe the above text?",
-            "t2i-1": "What do you see in the figure?",
-            "t2i-2": "Let's think about what we need to visualize to present the above idea.",
-            "t2i-3": "Describe what the picture corresponding to the text should have.",
-            "t2i-4": "What do you usually draw?",
-            "t2i-5": "Paraphrase the text.",
-        }
+        # What do I need to draw in the picture to describe the above text? Reply with the content you need to visualize directly.
         # prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text?" # Summarize in one sentence.
-        if self.opt.template_check:
-            prompt = ''.join(input_text) + "\n{}".format(template_dict[self.opt.t2i_bridge])
-        else:
-            prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text? Reply with the content you need to visualize directly."
-        response = self.completion.create(
-            prompt=prompt, engine="text-davinci-003", temperature=0.7,
-            top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
-            max_tokens=self.max_tokens)
+        prompt = ''.join(input_text) + "\n{}".format(t2i_template_dict[t2i_bridge])
+        try:
+            response = self.completion.create(
+                prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
+                max_tokens=50) # less max tokens for SD prompt generation
+        except:
+            import time
+            time.sleep(60)
+            response = self.completion.create(
+                prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                top_p=1, frequency_penalty=0, presence_penalty=0, best_of=1,
+                max_tokens=50) # less max tokens for SD prompt generation
         answer = response.choices[0].text.strip().strip('-').strip('_').strip('\n')
-        # if "would need to draw" in answer:
-        #     answer = answer[answer.index("to draw")+8:]
+        if t2i_bridge == "t2i-0" and "draw " in answer:
+            answer = answer[answer.index("draw")+4:]
+        if t2i_bridge == "t2i-1" and "figure" in answer:
+            answer = answer[answer.index("figure")+7:]
         return answer
 
     def ask_openloop(self, task_eval_predict, curr_prompt):
         if self.model_type == "task_only_base":
             prompt = "what is the step-by-step procedure of " + task_eval_predict + " without explanation "
-            ic(prompt)                
         else:
             # for robothow PLAN
             # prompt = "What is the step-by-step procedure of " + curr_prompt + "\nWhat is the step-by-step procedure of " + task_eval_predict + " without explanation "
@@ -170,11 +220,29 @@ class LLM_Reasoning(object):
             # prompt = "Refer to the possible procedure: " + curr_prompt + ", what is the step-by-step procedure of " + task_eval_predict + " without explanation "
             # prompt = curr_prompt + ", what is the executable step-by-step robot plan of " + task_eval_predict + " without explanation "
             prompt = "A possible procedural plan is: " + curr_prompt + ", think of implementing " + task_eval_predict + " within 5 steps "
-        response = self.completion.create(
-            prompt=prompt, engine="text-davinci-003", temperature=0.7,
-            top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
-            max_tokens=self.max_tokens)
-        answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
+        try:
+            response = self.completion.create(
+                prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
+                max_tokens=self.max_tokens)
+            answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
+        except:
+            import time
+            time.sleep(20)
+            try:
+                response = self.completion.create(
+                    prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                    top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
+                    max_tokens=self.max_tokens)
+                answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
+            except:
+                import time
+                time.sleep(60)
+                response = self.completion.create(
+                    prompt=prompt, engine="text-davinci-003", temperature=0.7,
+                    top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
+                    max_tokens=self.max_tokens)
+                answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
         return [f"Step {item}" for item in answer if len(item) > 3]
 
     def ask(self, prompt, step_idx):
@@ -272,7 +340,7 @@ class LLM_Reasoning(object):
                 json.dump(self.total_score_cal,resultfile)
                 ic(self.total_score_cal[opt.model_type])
         else:
-            if opt.task in ["c-plan", "m-plan"]:
+            if opt.task in ["c-plan"]:
                 if step_idx == 1:
                     self.curr_prompt = sample["tasks"]
                     os.makedirs(task_result_dir, exist_ok=True)

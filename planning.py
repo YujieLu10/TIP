@@ -24,7 +24,8 @@ def parse_args():
     # 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
     # sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm
     # 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
-    parser.add_argument('--api_key', type=str, default="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", help='api key')
+    # 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
+    parser.add_argument('--api_key', type=str, default="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", help='api key')
     parser.add_argument('--language_model_type', choices=['gpt-j-6B', 't5-11b', 'gpt2-1.5B', 'gpt2', 'gpt2-xl', 'gpt3', 'gpt_neo', 't5', 'bart', 'bert', 'roberta'], default="gpt3", help='choices')
     parser.add_argument('--model_type', choices=['concept_knowledge', 'task_only_base', 'base', 'base_tune', 'standard_prompt', 'soft_prompt_tuning', 'chain_of_thought', 'chain_of_cause', 'cmle_ipm', 'cmle_epm', 'irm', 'vae_r', 'rwSAM', 'counterfactual_prompt'], default="task_only_base", help='choices')
     parser.add_argument('--variant_type', choices=['wo_symbolic', 'wo_causality', 'full', 'wo_firsttranslation'], default='full', help='choices')
@@ -209,9 +210,10 @@ def parse_args():
     parser.add_argument('--caption_model_type', choices=['ofa', 'blip'], default="ofa", help='choices')
     parser.add_argument('--t2i_model_type', choices=['stablediffusion', 'dalle'], default="stablediffusion", help='choices')
     
-    parser.add_argument('--template_check', action='store_true', help='demo')
-    parser.add_argument('--t2i_bridge', default="t2i-0", help='choices')
-    parser.add_argument('--i2t_bridge', default="i2t-0", help='choices')
+    parser.add_argument('--t2i_template_check', action='store_true', help='demo')
+    parser.add_argument('--i2t_template_check', action='store_true', help='demo')
+    parser.add_argument('--t2i_bridge', default="t2i-2", help='choices')
+    parser.add_argument('--i2t_bridge', default="i2t-3", help='choices')
     opt = parser.parse_args()
     return opt
 
@@ -222,7 +224,8 @@ def main(opt):
     # common setup
     resolution_config = "resolution_{}".format(opt.resolution)
     # "bridge" if opt.use_bridge else "origin"
-    if opt.template_check:
+    if opt.t2i_template_check or opt.i2t_template_check:
+        # template_name = opt.t2i_bridge if opt.t2i_template_check else opt.i2t_bridge
         outpath = os.path.join(opt.outdir, "template_eval_output", opt.data_type, opt.task+("_w_task_hint" if opt.use_task_hint else ""))
     else:
         outpath = os.path.join(opt.outdir, "debug_output" if opt.debug else "experiment_output", resolution_config, opt.data_type, opt.task+("_w_task_hint" if opt.use_task_hint else ""))
@@ -258,9 +261,9 @@ def main(opt):
             if opt.task in ["c-plan"]:
                 mpp_planner.start_planning(open_loop=False)
             else: # m-plan
-                # use u-plan pipeline for visual plan generation
-                baseline_planner = Baseline_Planner(opt, config, outpath)
-                baseline_planner.start_planning()
+                # # use u-plan pipeline for visual plan generation
+                # baseline_planner = Baseline_Planner(opt, config, outpath)
+                # baseline_planner.start_planning()
                 # textual plan revise conditioned on caption
                 mpp_planner.start_planning(open_loop=True)
 

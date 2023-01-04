@@ -138,18 +138,20 @@ Batch Results Analysis
 
 ## Prompt Template Check
 ```
-python planning.py --task tgt-u-plan --template_check --only_use_bridge
+python planning.py --task m-plan --t2i_template_check
+
+python planning.py --task m-plan --i2t_template_check
 ```
 Text-to-Image Bridge
 
 ----------------------------------------------------------------------------
 1. What do I need to draw in the picture to describe the above text?
-2. Visual description of ""
+<!-- 2. Visual description of "" -->
 3. What do you see in the figure?
 4. Let's think about what we need to visualize to present the above idea.
 5. Describe what the picture corresponding to the text should have.
 ----------------------------------------------------------------------------
-1. how to draw a picture
+<!-- 1. how to draw a picture -->
 2. what do you usually draw?
 3. paraphrase the text
 
@@ -164,5 +166,10 @@ Image-to-Text Bridge
 
 ----------------------------------------------------------------------------
 1. What should we do?
-2. what's the correct procedure?
+<!-- 2. what's the correct procedure? -->
 3. Revise each step to disobey the visual imagination.
+
+**Eval Check**
+```
+python evaluators/template_robustness.py
+```

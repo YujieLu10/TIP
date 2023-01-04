@@ -26,15 +26,14 @@ class Baseline_Planner(Base_Planner):
         ic(len(task_start_idx_list))
         opt, config, outpath = self.opt, self.config, self.outpath
         # ic(data, task_start_idx_list)
+        ic(len(task_start_idx_list), outpath)
         image_generator = Image_Generation(opt, config, outpath)
         image_generator.generate_image(data, task_start_idx_list)
         
     def open_loop_textual_plan_revision(self):
-        # TODO: add funciton in load_sample to load: tgt, bridge_vplan
-        _, _, example_list = self.data_loader.load_sample(self.opt, self.config, load_task=False, out_path=self.outpath)
+        _, _, before_revision_example_list = self.data_loader.load_sample(self.opt, self.config, load_task=False, out_path=self.outpath, load_caption=True)
         llm_reasoning_engine = LLM_Reasoning(self.opt)
-        answer_example_list = llm_reasoning_engine.visual_plan_conditioned_textual_plan_revision(self.outpath, example_list)
-        # TODO: answer_example_list => write bridge_tplan
+        llm_reasoning_engine.visual_plan_conditioned_textual_plan_revision(self.outpath, before_revision_example_list)
 
     
     def open_loop_textual_plan_generation(self, summarize_example_data_list):
@@ -67,13 +66,14 @@ class Baseline_Planner(Base_Planner):
                 
     def start_planning(self):
         # if self.opt.task_num > 0: summarize_example_data_list = summarize_example_data_list[:self.opt.task_num]
-        if self.opt.task in ["u-plan", "m-plan"]:
+        if self.opt.task in ["u-plan"]:
             _, _, summarize_example_data_list = self.data_loader.load_sample(self.opt, self.config, load_task=True, out_path=self.outpath)
             # ic(summarize_example_data_list)
             self.open_loop_textual_plan_generation(summarize_example_data_list)
             self.open_loop_visual_plan_generation()
         elif self.opt.task in ["tgt-u-plan", "tgt-u-plan-dalle"]: # text to image generation
-            if self.opt.template_check:
+            # TODO: tgt/vgt+bridge => revise existing instructional multimodal dataset!
+            if self.opt.i2t_template_check: # i2t_template_check will revise the textual plan
                 self.open_loop_visual_plan_generation()
                 self.open_loop_textual_plan_revision()
             else:
