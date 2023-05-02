@@ -30,8 +30,6 @@ class Data_Loader(object):
             if opt.task in ["tgt-u-plan", "tgt-u-plan-dalle", "c-plan"] or load_task:
                 gt_data_path = os.path.join("/share/edc/home/yujielu/MPP_data/groundtruth_input/{}".format(opt.data_type))
                 task_num = opt.task_num if opt.task_num > 0 else len(os.listdir(gt_data_path))
-                # if exist_task_num == 0 or (opt.resume and exist_task_num < opt.task_num):
-                # for task_idx in range(0 if not opt.resume else exist_task_num-1, opt.task_num):
                 for task_idx in tqdm(range(0 if not opt.resume else exist_task_num-1, task_num)):
                     step_list = []
                     caption_list = []
@@ -42,7 +40,6 @@ class Data_Loader(object):
                     with open(os.path.join(gt_sample_path, f"task.txt"), 'r') as ft:
                         task = ft.readline()
                         data.append(task)
-                    # ic(gt_sample_path, step_num)
                     for step_idx in range(1, step_num+1):
                         with open(os.path.join(gt_sample_path, f"step_{step_idx}.txt"), 'r') as fs:
                             step = fs.readline()
@@ -55,12 +52,10 @@ class Data_Loader(object):
                         all_step_count += 1
                     summarize_example_data_list.append({"tasks": task, "steps": step_list, "captions": caption_list})
             elif opt.task in ["u-plan", "m-plan"]:
-                # "bridge" if opt.use_bridge else "origin"
                 task_num = opt.task_num if opt.task_num > 0 else len(os.listdir(gt_data_path))
                 all_step_count = 0
 
                 for task_idx in tqdm(range(0 if not opt.resume else exist_task_num-1, task_num)):
-                    # data = []
                     step_list = []
                     caption_list = []
                     sample_path = os.path.join(out_path, f"task_{str(task_idx)}")
@@ -68,7 +63,6 @@ class Data_Loader(object):
                         continue
                     task_start_idx_list.append(all_step_count)
                     all_step_count += 1
-                    # step_num = len(os.listdir(sample_path))
                     with open(os.path.join(sample_path, f"task.txt"), 'r') as f:
                         task = f.readline()
                         data.append(task)

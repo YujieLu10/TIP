@@ -27,8 +27,7 @@ from tqdm import tqdm, trange
 from icecream import ic
 from LLM_Reasoning import *
 
-# openai.api_key = "sk-rXwHNrNvXmaQv9n9OKe3NPCBvH7RGXhCmK3YQNRm"
-openai.api_key = "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"
+openai.api_key = "***"
 
 def chunk(it, size):
     it = iter(it)

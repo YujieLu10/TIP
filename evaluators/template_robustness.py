@@ -26,20 +26,14 @@ class Template_Checker(object):
             gt_features = self.clip_model.encode_text(tgt)
             pre_features /= pre_features.norm(dim=-1, keepdim=True)
             gt_features /= gt_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ gt_features.T)#.softmax(dim=-1)
-            # ic(similarity.cpu().item())
-            # # TODO: debug
-            # ic(similarity.detach().cpu().numpy())
+            similarity = (100.0 * pre_features @ gt_features.T)
             total_score_cal["tplan-tgt-clip-score"] += (similarity.cpu().item() / step_num)
             
             pre_features = self.clip_model.encode_image(vplan)
             gt_features = self.clip_model.encode_text(tgt)
             pre_features /= pre_features.norm(dim=-1, keepdim=True)
             gt_features /= gt_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ gt_features.T)#.softmax(dim=-1)
-            # ic(similarity.cpu().item())
-            # # TODO: debug
-            # ic(similarity.detach().cpu().numpy())
+            similarity = (100.0 * pre_features @ gt_features.T)
             total_score_cal["vplan-tgt-clip-score"] += (similarity.cpu().item() / step_num)
         return total_score_cal
 
@@ -49,24 +43,14 @@ class Template_Checker(object):
             gt_features = self.clip_model.encode_image(vgt)
             pre_features /= pre_features.norm(dim=-1, keepdim=True)
             gt_features /= gt_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ gt_features.T)#.softmax(dim=-1)
-            # ic(similarity.cpu().item())
-            # ic(similarity)
-            # ic(similarity.cpu().item())
-            # # TODO: debug
-            # ic(similarity.detach().cpu().numpy())
+            similarity = (100.0 * pre_features @ gt_features.T)
             total_score_cal["vplan-vgt-clip-score"] += (similarity.cpu().item() / step_num)
             
             pre_features = self.clip_model.encode_text(tplan)
             gt_features = self.clip_model.encode_image(vgt)
             pre_features /= pre_features.norm(dim=-1, keepdim=True)
             gt_features /= gt_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ gt_features.T)#.softmax(dim=-1)
-            # ic(similarity.cpu().item())
-            # ic(similarity)
-            # ic(similarity.cpu().item())
-            # # TODO: debug
-            # ic(similarity.detach().cpu().numpy())
+            similarity = (100.0 * pre_features @ gt_features.T)
             total_score_cal["tplan-vgt-clip-score"] += (similarity.cpu().item() / step_num)
         return total_score_cal
     
@@ -76,7 +60,7 @@ class Template_Checker(object):
             gt_features = self.clip_model.encode_image(vplan)
             pre_features /= pre_features.norm(dim=-1, keepdim=True)
             gt_features /= gt_features.norm(dim=-1, keepdim=True)
-            similarity = (100.0 * pre_features @ gt_features.T)#.softmax(dim=-1)
+            similarity = (100.0 * pre_features @ gt_features.T)
             # ic(similarity.cpu().item())
             
             total_score_cal["tplan-vplan-clip-score"] += (similarity.cpu().item() / step_num)

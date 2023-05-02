@@ -12,9 +12,6 @@ from tqdm import tqdm
 import glob
 
 MAX_STEPS = 22
-# load_dotenv()
-# openai.api_key = opt.api_key #"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"
-
 LMTYPE_TO_LMID = {
     "gpt3": "gpt3",
     "gpt-j-6B": "EleutherAI/gpt-j-6B",
@@ -93,21 +90,9 @@ class LLM_Reasoning(object):
                     "frequency_penalty": 1,
                     "stop": '\n'
                 }
-        # For MPP debug
-        # self.sampling_params = \
-        #         {
-        #             "max_tokens": self.max_tokens,
-        #             "temperature": 0.7,
-        #             "top_p": 1,
-        #             "n": 10,
-        #             "logprobs": 1,
-        #             "presence_penalty": 2,
-        #             "frequency_penalty": 2,
-        #             "stop": '\n'
-        #         }
         if opt.do_eval_each:
             self.total_score_cal = {"sentence-bleu": 0, "wmd": 0, "rouge-1-f": 0, "rouge-1-p": 0, "rouge-1-r": 0, "bert-score-f": 0, "bert-score-p": 0, "bert-score-r": 0, "meteor": 0, "sentence-bert-score": 0, "caption-t-bleu": 0, "LCS": 0, "caption-t-bleu": 0, "caption-vcap-lcs": 0, "gpt3-plan-accuracy": 0, "caption-gpt3-plan-accuracy": 0, "vplan-t-clip-score": 0, "tplan-v-clip-score": 0, "vplan-v-clip-score": 0, "tplan-t-clip-score": 0}
-            # self.lm_automatic_evaluator = Automatic_Evaluator(self.opt)
+
     
     def get_revision_plan(self, sample_path, current_revision_sample, template_dict, i2t_bridge):
         template = i2t_template_dict[i2t_bridge]
@@ -135,8 +120,6 @@ class LLM_Reasoning(object):
             answer = answer[1:]
         step_num = len(glob.glob1(sample_path,f"step_[0-9]*_bridget2i-0_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9]*_bridge_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9]*_caption.txt")) or len(glob.glob1(sample_path,"step_[0-9]*.txt"))
         step_num = min(step_num, len(answer))
-        # after_revision_example_list => write bridge_tplan
-        # ic(i2t_bridge, step_num)
         for step_idx in range(1, step_num+1):
             try:
                 with open(os.path.join(sample_path, "step_{}_bridge{}_tplan.txt".format(str(step_idx), str(i2t_bridge) if (self.opt.t2i_template_check or self.opt.i2t_template_check) else "")), 'w') as f:
@@ -146,7 +129,6 @@ class LLM_Reasoning(object):
 
     
     def visual_plan_conditioned_textual_plan_revision(self, outpath, before_revision_example_list):
-        # ic(before_revision_example_list)
         for task_idx in tqdm(range(self.opt.task_num)):
             sample_path = os.path.join(outpath, f"task_{task_idx}")
             current_revision_sample = before_revision_example_list[task_idx]
@@ -188,8 +170,6 @@ class LLM_Reasoning(object):
         Negative Prompt:a person sits
 
         """
-        # What do I need to draw in the picture to describe the above text? Reply with the content you need to visualize directly.
-        # prompt = ''.join(input_text) + "\nWhat do I need to draw in the picture to describe the above text?" # Summarize in one sentence.
         prompt = ''.join(input_text) + "\n{}".format(t2i_template_dict[t2i_bridge])
         try:
             response = self.completion.create(
@@ -214,44 +194,18 @@ class LLM_Reasoning(object):
         if self.model_type == "task_only_base":
             prompt = "what is the step-by-step procedure of " + task_eval_predict + " without explanation "
         else:
-            # for robothow PLAN
-            # prompt = "What is the step-by-step procedure of " + curr_prompt + "\nWhat is the step-by-step procedure of " + task_eval_predict + " without explanation "
-            # prompt = curr_prompt + ", what is the step-by-step procedure of " + task_eval_predict + " without explanation "
-            # prompt = "Refer to the possible procedure: " + curr_prompt + ", what is the step-by-step procedure of " + task_eval_predict + " without explanation "
-            # prompt = curr_prompt + ", what is the executable step-by-step robot plan of " + task_eval_predict + " without explanation "
             prompt = "A possible procedural plan is: " + curr_prompt + ", think of implementing " + task_eval_predict + " within 5 steps "
-        try:
-            response = self.completion.create(
-                prompt=prompt, engine="text-davinci-003", temperature=0.7,
-                top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
-                max_tokens=self.max_tokens)
-            answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
-        except:
-            import time
-            time.sleep(20)
-            try:
-                response = self.completion.create(
-                    prompt=prompt, engine="text-davinci-003", temperature=0.7,
-                    top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
-                    max_tokens=self.max_tokens)
-                answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
-            except:
-                import time
-                time.sleep(60)
-                response = self.completion.create(
-                    prompt=prompt, engine="text-davinci-003", temperature=0.7,
-                    top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
-                    max_tokens=self.max_tokens)
-                answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
+        response = self.completion.create(
+            prompt=prompt, engine="text-davinci-003", temperature=0.7,
+            top_p=1, frequency_penalty=1, presence_penalty=1, best_of=1,
+            max_tokens=self.max_tokens)
+        answer = response.choices[0].text.strip().strip('-').strip('_').split('\n')
         return [f"Step {item}" for item in answer if len(item) > 3]
 
     def ask(self, prompt, step_idx):
         if step_idx == 1:
-            # prompt = "what is the step-by-step procedure of " + prompt + " without explanation "
             prompt = prompt + "\n what is the first step of above task in one sentence?"
         else:
-            # prompt = prompt + "\n what is the next step of above procedure in one sentence? Reply with END if there is no more need for another step to complete the task."
-            # prompt = prompt + "\n what is the next step of the above procedure in one sentence? Reply END if this is the final step."
             prompt = prompt + "\n what is the next step of the above procedure in one sentence? Reply \"END\" if the procedure is complete and already reached the final step."
             ic(prompt)
         
@@ -280,12 +234,12 @@ class LLM_Reasoning(object):
         return answer
 
     def language_planning(self, total_score_cal, data_example, sample_result_dir="", write_step_result=False):
-        task = data_example["tasks"]# if not opt.model_type == "concept_knowledge" else "Hang up jacket in bedroom"
+        task = data_example["tasks"]
         if write_step_result:
             with open(os.path.join(sample_result_dir, f"task.txt"), 'w') as f:
                 f.write(f"{task}")
         if self.model_type == "task_only_base":
-            curr_prompt = task+'.' #+ "<|endoftext|>" 
+            curr_prompt = task+'.'
 
         self.result_list.append('\n' + '-'*10 + ' GIVEN EXAMPLE ' + '-'*10+'\n')
         task_eval_groundtruth = task + '. ' + str(data_example["steps"])
@@ -295,14 +249,11 @@ class LLM_Reasoning(object):
 
         self.result_list.append(f'{task}.')
         step_sequence = []
-        if True: #self.open_loop:
+        if True:
             generated_list = self.ask_openloop(task_eval_predict, curr_prompt)
             ic(generated_list)
             translated_list = []
             for step_idx, each_step in enumerate(generated_list):
-                # most_similar_idx, matching_score = find_most_similar(each_step, action_list_embedding)
-                # translated_action = action_list[most_similar_idx]
-                # if matching_score < self.cut_threshold: continue
                 
                 best_action = each_step # translated_action
                 formatted_action = best_action # (best_action[0].upper() + best_action[1:]).replace('_', ' ')
@@ -313,15 +264,7 @@ class LLM_Reasoning(object):
                         f.write(f"{formatted_action}")
             self.result_list.append(" ".join(translated_list.copy()))
             task_eval_predict += " ".join(translated_list.copy())
-        # ic(task_eval_groundtruth, task_eval_predict)
-        # ic(len(task_eval_groundtruth.split('.')), len(task_eval_predict.split('.')))
-        # ic(model_type, task, sentence_bleu([task_eval_groundtruth.split()], task_eval_predict.split()), nlp_encoder(task_eval_groundtruth).similarity(nlp_encoder(task_eval_predict)))
-        # ic(task, len(task_eval_groundtruth), len(task_eval_predict))
-        if self.opt.do_eval_each:
-            return self.result_list
-            # return self.lm_automatic_evaluator.calculate_total_score(total_score_cal=total_score_cal, task_eval_groundtruth=task_eval_groundtruth, task_eval_predict=task_eval_predict), self.result_list
-        else:
-            return self.result_list
+        return self.result_list
 
 
     def generate_language_plan(self, opt, task_result_dir, summarize_example_data_list, sample=None, step_idx=-1):
@@ -332,8 +275,6 @@ class LLM_Reasoning(object):
                     
                     self.total_score_cal, result_list = self.language_planning(self.total_score_cal, data_example)
 
-                # mean value
-                # ic(len(summarize_example_data_list), self.total_score_cal[opt.model_type].keys())
                 for score_key in self.total_score_cal[opt.model_type].keys():
                     self.total_score_cal[opt.model_type][score_key] /= (len(summarize_example_data_list))
                 resultfile.writelines(result_list)
@@ -347,7 +288,7 @@ class LLM_Reasoning(object):
                     with open(os.path.join(task_result_dir, "task.txt"), 'w') as f:
                         f.write(f"{self.curr_prompt}")
                 best_action = self.ask(self.curr_prompt, step_idx)
-                plan_termination = (step_idx > MAX_STEPS) or ("END" in best_action) or ("End" in best_action and len(best_action) < 5) # GPT3 reach end token EOS
+                plan_termination = (step_idx > MAX_STEPS) or ("END" in best_action) or ("End" in best_action and len(best_action) < 5)
                 if plan_termination: return plan_termination, None
                 self.task_prediced_steps.append(best_action)
                 formatted_action = f'Step {step_idx}: {best_action}' if not "Step" in best_action else best_action

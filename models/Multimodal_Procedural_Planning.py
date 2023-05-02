@@ -23,7 +23,6 @@ class MPP_Planner(Base_Planner):
         self.config = config
         self.llm_reasoning_engine = LLM_Reasoning(self.opt)
         self.image_generator = Image_Generation(self.opt, self.config, self.outpath)
-        # self.automatic_evaluator = Automatic_Evaluator(self.opt)
         self.image_verbalizer = Image_Verbalizing(self.opt, self.outpath)
     
     def closed_loop_textual_plan_generation(self, task_result_dir, sample, step_idx):
@@ -86,13 +85,8 @@ class MPP_Planner(Base_Planner):
             if not self.opt.t2i_template_check:
                 self.open_loop_textual_plan_revision()
         else: # c-plan
-            # close loop condition on multimodal generated plan
-            # if self.opt.task_num > 0: self.summarize_example_data_list = self.summarize_example_data_list[:self.opt.task_num]
             exist_task_num = len(os.listdir(self.outpath))
             for task_idx, sample in enumerate(self.summarize_example_data_list):
                 start_task_idx = (task_idx + exist_task_num - 1) if self.opt.resume else task_idx
                 ic(start_task_idx)
                 self.temporal_extended_mpp(sample, start_task_idx)
-        
-        # eval_path = self.outpath # "/share/edc/home/yujielu/MPP_data/test_config/wikihow/u-plan/"
-        # self.automatic_evaluator.calculate_total_score(total_score_cal=self.total_score_cal, from_task_path=eval_path)

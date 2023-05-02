@@ -32,8 +32,7 @@ class Predictor(object):
         self.device = "cuda:0"
 
         self.models = {
-            'image_captioning': blip_decoder(pretrained='/share/edc/home/yujielu/MPP_data/model_base_caption_capfilt_large.pth',
-                                             image_size=384, vit='base'),
+            'image_captioning': blip_decoder(pretrained='/share/edc/home/yujielu/MPP_data/model_base_caption_capfilt_large.pth', image_size=384, vit='base'),
         }
 
     def predict(self, image, task):
