@@ -9,19 +9,19 @@ Please check out our paper <a href="[https://drive.google.com/file/d/10k4YCCgTjQ
 Our dual Text-Image Prompting (TIP) model generates coherent and authentic multimodal procedural
 plans with multiple steps towards a high-level goal, providing useful guidelines in task completion.
 <p align="center">
-<img src="paper_assets/teaser.png" width="512px"></img>
+<img src="paper_assets/teaser.png" width="1024px"></img>
 </p>
 The vanilla text plan is generated using LLM. Our Text-Image Prompting (TIP) generates the textual-
 grounded image plan using T2I-Bridge (Fig. 3) and the visual-grounded text plan using I2T-Bridge (Fig. 5). The
 colors blue and green highlight the improved grounding in text and image respectively.
 <p align="center">
-<img src="paper_assets/overview.png" width="512px"></img>
+<img src="paper_assets/overview.png" width="1024px"></img>
 </p>
 
 Improved grounding in textual and visual context are highlighted in pink and green respectively. Red texts
 indicate reasoning of physical action in image plan generation.
 <p align="center">
-<img src="paper_assets/plan_compare_ours.png" width="512px"></img>
+<img src="paper_assets/plan_compare_ours.png" width="1024px"></img>
 </p>
 
 ## Installation
