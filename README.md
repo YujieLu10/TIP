@@ -99,3 +99,19 @@ Check template robustness:
 ```
 python evaluators/template_robustness.py
 ```
+
+
+## Citation
+
+If you found this repository useful, please consider cite our paper:
+
+```bibtex
+@misc{lu2023multimodal,
+      title={Multimodal Procedural Planning via Dual Text-Image Prompting}, 
+      author={Yujie Lu and Pan Lu and Zhiyu Chen and Wanrong Zhu and Xin Eric Wang and William Yang Wang},
+      year={2023},
+      eprint={2305.01795},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
