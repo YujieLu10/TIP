@@ -1,6 +1,6 @@
 # TIP
 <p align="center">
-   🤗 <a href="https://yujielu10.github.io/" target="_blank">Demo [Coming Soon]</a> 📃 <a href="https://arxiv.org/abs/2305.01795" target="_blank">Paper</a> 🐦 <a href="https://twitter.com/yujielu_10" target="_blank">Twitter</a><br>
+   🤗 <a href="https://yujielu10.github.io/" target="_blank">Demo [Coming Soon]</a> 📃 <a href="https://arxiv.org/abs/2305.01795" target="_blank">Paper</a> <a href="[https://arxiv.org/abs/2305.01795](https://drive.google.com/drive/folders/1ZK7Ah0-z__evLZcGw85S2UEpDW2UWvSY?usp=drive_link)" target="_blank">Data</a> 🐦 <a href="https://twitter.com/yujielu_10" target="_blank">Twitter</a><br>
 </p>
 Thrilled to release TIP (Dual Text-Image Prompting), a Text-to-Image model enhanced Large Language Model that can generate coherent and authentic multimodal procedural plans toward a high-level goal.
 Please check out our paper <a href="[https://drive.google.com/file/d/10k4YCCgTjQr1cb6O3Gigzqjwqu10JTst/view?usp=sharing](https://arxiv.org/abs/2305.01795)" target="_blank">"Multimodal Procedural Planning via Dual Text-Image Prompting"</a>!
